@@ -1,37 +1,65 @@
-'use server'
+'use client'
 
-import { createClient } from '@/lib/supabase/server'
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  updateProfile,
+} from 'firebase/auth'
+import { auth } from '@/lib/firebase/client'
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
+import { firestore } from '@/lib/firebase/client'
 import { redirect } from 'next/navigation'
 
-export async function signIn(formData: FormData) {
-  const supabase = await createClient()
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
+export async function signIn(email: string, password: string) {
+  try {
+    const result = await signInWithEmailAndPassword(auth, email, password)
+    const token = await result.user.getIdToken()
 
-  const { error } = await supabase.auth.signInWithPassword({ email, password })
-  if (error) return { error: error.message }
+    // Store token in cookie for server actions
+    await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
 
-  redirect('/dashboard')
+    redirect('/dashboard')
+  } catch (error: any) {
+    return { error: error.message || 'Erro ao entrar' }
+  }
 }
 
-export async function signUp(formData: FormData) {
-  const supabase = await createClient()
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
-  const name = formData.get('name') as string
+export async function signUp(email: string, password: string, name: string) {
+  try {
+    const result = await createUserWithEmailAndPassword(auth, email, password)
+    await updateProfile(result.user, { displayName: name })
 
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { name } },
-  })
-  if (error) return { error: error.message }
+    // Create user profile in Firestore
+    await setDoc(doc(firestore, 'users', result.user.uid), {
+      name,
+      email,
+      createdAt: serverTimestamp(),
+    })
 
-  redirect('/dashboard')
+    const token = await result.user.getIdToken()
+    await fetch('/api/auth/session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token }),
+    })
+
+    redirect('/dashboard')
+  } catch (error: any) {
+    return { error: error.message || 'Erro ao criar conta' }
+  }
 }
 
 export async function signOut() {
-  const supabase = await createClient()
-  await supabase.auth.signOut()
-  redirect('/login')
+  try {
+    await firebaseSignOut(auth)
+    await fetch('/api/auth/logout', { method: 'POST' })
+    redirect('/login')
+  } catch (error: any) {
+    return { error: error.message || 'Erro ao sair' }
+  }
 }

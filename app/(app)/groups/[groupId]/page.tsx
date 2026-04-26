@@ -1,5 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/firebase/server'
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
+import { firestore } from '@/lib/firebase/client'
 import { AlbumView } from '@/components/album/AlbumView'
 import { InviteSection } from '@/components/groups/InviteSection'
 import { GroupTabs } from '@/components/groups/GroupTabs'
@@ -7,36 +9,30 @@ import { QuantityMap } from '@/lib/types'
 
 export default async function AlbumPage({ params }: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const { data: group } = await supabase
-    .from('groups')
-    .select('id, name, invite_code')
-    .eq('id', groupId)
-    .single()
+  // Get group
+  const groupDoc = await getDoc(doc(firestore, 'groups', groupId))
+  if (!groupDoc.exists()) notFound()
 
-  if (!group) notFound()
+  const group = groupDoc.data()
 
-  const { data: membership } = await supabase
-    .from('group_members')
-    .select('group_id')
-    .eq('group_id', groupId)
-    .eq('user_id', user.id)
-    .single()
+  // Verify user is a member
+  const memberDoc = await getDoc(doc(firestore, 'groupMembers', `${groupId}-${user.uid}`))
+  if (!memberDoc.exists()) notFound()
 
-  if (!membership) notFound()
-
-  const { data: stickers } = await supabase
-    .from('user_stickers')
-    .select('sticker_id, quantity')
-    .eq('user_id', user.id)
-    .eq('group_id', groupId)
+  // Get user's stickers for this group
+  const q = query(
+    collection(firestore, 'userStickers'),
+    where('userId', '==', user.uid),
+    where('groupId', '==', groupId)
+  )
+  const stickersSnapshot = await getDocs(q)
 
   const quantities: QuantityMap = {}
-  for (const s of stickers ?? []) {
-    quantities[s.sticker_id] = s.quantity
+  for (const doc of stickersSnapshot.docs) {
+    quantities[doc.data().stickerId] = doc.data().quantity
   }
 
   return (
@@ -46,7 +42,7 @@ export default async function AlbumPage({ params }: { params: Promise<{ groupId:
       </div>
 
       <GroupTabs groupId={groupId} active="album" />
-      <InviteSection inviteCode={group.invite_code} />
+      <InviteSection inviteCode={group.inviteCode} />
       <AlbumView groupId={groupId} initialQuantities={quantities} />
     </div>
   )
