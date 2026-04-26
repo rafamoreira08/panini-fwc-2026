@@ -1,31 +1,25 @@
 import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/firebase/server'
+import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
+import { firestore } from '@/lib/firebase/client'
 import { GroupTabs } from '@/components/groups/GroupTabs'
 import { TradeSearch } from '@/components/trades/TradeSearch'
 import { MyDuplicates } from '@/components/trades/MyDuplicates'
 
 export default async function TradesPage({ params }: { params: Promise<{ groupId: string }> }) {
   const { groupId } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
   if (!user) redirect('/login')
 
-  const { data: group } = await supabase
-    .from('groups')
-    .select('id, name')
-    .eq('id', groupId)
-    .single()
+  // Get group
+  const groupDoc = await getDoc(doc(firestore, 'groups', groupId))
+  if (!groupDoc.exists()) notFound()
 
-  if (!group) notFound()
+  // Verify user is a member
+  const memberDoc = await getDoc(doc(firestore, 'groupMembers', `${groupId}-${user.uid}`))
+  if (!memberDoc.exists()) notFound()
 
-  const { data: membership } = await supabase
-    .from('group_members')
-    .select('group_id')
-    .eq('group_id', groupId)
-    .eq('user_id', user.id)
-    .single()
-
-  if (!membership) notFound()
+  const group = groupDoc.data()
 
   return (
     <div className="space-y-4">

@@ -1,25 +1,24 @@
-import { createClient } from '@/lib/supabase/server'
-import { joinGroupByCode } from '@/app/actions/groups'
+import { getCurrentUser } from '@/lib/firebase/server'
 import { redirect } from 'next/navigation'
+import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
+import { firestore } from '@/lib/firebase/client'
 import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
+import { joinGroupByCode } from '@/app/actions/groups'
 
 export default async function JoinPage({ params }: { params: Promise<{ inviteCode: string }> }) {
   const { inviteCode } = await params
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getCurrentUser()
 
   if (!user) {
     redirect(`/login?next=/join/${inviteCode}`)
   }
 
-  const { data: group } = await supabase
-    .from('groups')
-    .select('id, name')
-    .eq('invite_code', inviteCode)
-    .single()
+  // Find group by invite code
+  const groupsQ = query(collection(firestore, 'groups'), where('inviteCode', '==', inviteCode))
+  const groupsSnapshot = await getDocs(groupsQ)
 
-  if (!group) {
+  if (groupsSnapshot.empty) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
@@ -34,16 +33,13 @@ export default async function JoinPage({ params }: { params: Promise<{ inviteCod
     )
   }
 
-  // Check if already a member
-  const { data: existing } = await supabase
-    .from('group_members')
-    .select('group_id')
-    .eq('group_id', group.id)
-    .eq('user_id', user.id)
-    .single()
+  const group = groupsSnapshot.docs[0].data()
+  const groupId = groupsSnapshot.docs[0].id
 
-  if (existing) {
-    redirect(`/groups/${group.id}`)
+  // Check if already a member
+  const memberDoc = await getDoc(doc(firestore, 'groupMembers', `${groupId}-${user.uid}`))
+  if (memberDoc.exists()) {
+    redirect(`/groups/${groupId}`)
   }
 
   return (

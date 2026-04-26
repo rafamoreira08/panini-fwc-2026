@@ -11,9 +11,19 @@ import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 import { firestore } from '@/lib/firebase/client'
 import { redirect } from 'next/navigation'
 
-export async function signIn(email: string, password: string) {
+export async function signIn(formDataOrEmail: FormData | string, password?: string) {
   try {
-    const result = await signInWithEmailAndPassword(auth, email, password)
+    let email: string, pwd: string
+
+    if (formDataOrEmail instanceof FormData) {
+      email = formDataOrEmail.get('email') as string
+      pwd = formDataOrEmail.get('password') as string
+    } else {
+      email = formDataOrEmail
+      pwd = password!
+    }
+
+    const result = await signInWithEmailAndPassword(auth, email, pwd)
     const token = await result.user.getIdToken()
 
     // Store token in cookie for server actions
@@ -29,14 +39,26 @@ export async function signIn(email: string, password: string) {
   }
 }
 
-export async function signUp(email: string, password: string, name: string) {
+export async function signUp(formDataOrEmail: FormData | string, password?: string, name?: string) {
   try {
-    const result = await createUserWithEmailAndPassword(auth, email, password)
-    await updateProfile(result.user, { displayName: name })
+    let email: string, pwd: string, userName: string
+
+    if (formDataOrEmail instanceof FormData) {
+      email = formDataOrEmail.get('email') as string
+      pwd = formDataOrEmail.get('password') as string
+      userName = formDataOrEmail.get('name') as string
+    } else {
+      email = formDataOrEmail
+      pwd = password!
+      userName = name!
+    }
+
+    const result = await createUserWithEmailAndPassword(auth, email, pwd)
+    await updateProfile(result.user, { displayName: userName })
 
     // Create user profile in Firestore
     await setDoc(doc(firestore, 'users', result.user.uid), {
-      name,
+      name: userName,
       email,
       createdAt: serverTimestamp(),
     })
