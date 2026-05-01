@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Copy, Check } from 'lucide-react'
+import { Copy, Check, Share2 } from 'lucide-react'
 
 interface InviteSectionProps {
   inviteCode: string
@@ -23,19 +23,40 @@ export function InviteSection({ inviteCode }: InviteSectionProps) {
   }
 
   return (
-    <div className="bg-white rounded-xl border p-4">
-      <h3 className="font-semibold text-gray-900 text-sm mb-1">Convidar membros</h3>
-      <p className="text-xs text-gray-500 mb-3">Compartilhe o link abaixo para convidar pessoas para o grupo.</p>
+    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 p-6">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Share2 size={18} className="text-blue-600" />
+            <h3 className="font-semibold text-gray-900">Convidar membros</h3>
+          </div>
+          <p className="text-sm text-gray-600">Compartilhe este link para adicionar pessoas ao grupo</p>
+        </div>
+      </div>
+
       <div className="flex gap-2">
-        <div className="flex-1 bg-gray-50 border rounded-lg px-3 py-2 text-xs text-gray-600 font-mono truncate">
-          /join/{inviteCode}
+        <div className="flex-1 bg-white border border-blue-200 rounded-lg px-4 py-3 text-sm text-gray-700 font-mono truncate">
+          {inviteUrl}
         </div>
         <button
           onClick={copy}
-          className="flex items-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition-colors"
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200 shrink-0 ${
+            copied
+              ? 'bg-green-600 text-white'
+              : 'bg-blue-600 hover:bg-blue-700 text-white shadow-sm'
+          }`}
         >
-          {copied ? <Check size={14} /> : <Copy size={14} />}
-          {copied ? 'Copiado!' : 'Copiar'}
+          {copied ? (
+            <>
+              <Check size={16} />
+              <span className="hidden sm:inline">Copiado!</span>
+            </>
+          ) : (
+            <>
+              <Copy size={16} />
+              <span className="hidden sm:inline">Copiar</span>
+            </>
+          )}
         </button>
       </div>
     </div>

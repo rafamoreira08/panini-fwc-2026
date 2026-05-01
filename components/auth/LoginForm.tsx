@@ -1,12 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { signIn } from '@/app/actions/auth'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
 export function LoginForm() {
+  const router = useRouter()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -14,31 +17,62 @@ export function LoginForm() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    const result = await signIn(new FormData(e.currentTarget))
-    if (result?.error) {
-      setError(result.error)
-      setLoading(false)
+    try {
+      const result = await signIn(new FormData(e.currentTarget))
+      if (result?.error) {
+        setError(result.error)
+      } else if (result?.success) {
+        router.push('/dashboard')
+        return
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erro inesperado')
     }
+    setLoading(false)
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-5">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
-        <Input type="email" name="email" required placeholder="seu@email.com" />
+        <label className="block text-sm font-semibold text-gray-700 mb-2">E-mail</label>
+        <Input
+          type="email"
+          name="email"
+          required
+          placeholder="seu@email.com"
+          disabled={loading}
+        />
       </div>
+
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
-        <Input type="password" name="password" required placeholder="••••••••" />
+        <label className="block text-sm font-semibold text-gray-700 mb-2">Senha</label>
+        <Input
+          type="password"
+          name="password"
+          required
+          placeholder="••••••••"
+          disabled={loading}
+        />
       </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <Button type="submit" size="lg" className="w-full" disabled={loading}>
+
+      {error && (
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <AlertCircle size={18} className="text-red-600 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
+
+      <Button type="submit" size="lg" className="w-full mt-6" disabled={loading}>
         {loading ? 'Entrando...' : 'Entrar'}
       </Button>
-      <p className="text-center text-sm text-gray-600">
+
+      <p className="text-center text-sm text-gray-600 pt-2">
         Não tem conta?{' '}
-        <Link href="/register" className="text-green-600 hover:underline font-medium">
-          Criar conta
+        <Link
+          href="/register"
+          className="text-green-600 hover:text-green-700 font-semibold transition-colors"
+        >
+          Criar conta grátis
         </Link>
       </p>
     </form>

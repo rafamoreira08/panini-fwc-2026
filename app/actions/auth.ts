@@ -1,15 +1,6 @@
 'use client'
 
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut as firebaseSignOut,
-  updateProfile,
-} from 'firebase/auth'
-import { auth } from '@/lib/firebase/client'
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { firestore } from '@/lib/firebase/client'
-import { redirect } from 'next/navigation'
+import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
 
 export async function signIn(formDataOrEmail: FormData | string, password?: string) {
   try {
@@ -23,17 +14,21 @@ export async function signIn(formDataOrEmail: FormData | string, password?: stri
       pwd = password!
     }
 
-    const result = await signInWithEmailAndPassword(auth, email, pwd)
+    const { signInWithEmailAndPassword } = await import('firebase/auth')
+    const result = await signInWithEmailAndPassword(getFirebaseAuth(), email, pwd)
     const token = await result.user.getIdToken()
 
-    // Store token in cookie for server actions
-    await fetch('/api/auth/session', {
+    const response = await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
     })
 
-    redirect('/dashboard')
+    if (response.ok) {
+      return { success: true }
+    } else {
+      return { error: 'Erro ao salvar sessão' }
+    }
   } catch (error: any) {
     return { error: error.message || 'Erro ao entrar' }
   }
@@ -53,24 +48,32 @@ export async function signUp(formDataOrEmail: FormData | string, password?: stri
       userName = name!
     }
 
-    const result = await createUserWithEmailAndPassword(auth, email, pwd)
+    const { createUserWithEmailAndPassword, updateProfile } = await import('firebase/auth')
+
+    const result = await createUserWithEmailAndPassword(getFirebaseAuth(), email, pwd)
     await updateProfile(result.user, { displayName: userName })
 
-    // Create user profile in Firestore
-    await setDoc(doc(firestore, 'users', result.user.uid), {
-      name: userName,
-      email,
+    // Criar documento de usuário (essencial)
+    const { doc, setDoc, serverTimestamp } = await import('firebase/firestore')
+    await setDoc(doc(getFirebaseFirestore(), 'users', result.user.uid), {
+      name: userName.trim(),
+      email: email.trim(),
+      displayName: userName.trim(),
       createdAt: serverTimestamp(),
-    })
+    }, { merge: true })
 
     const token = await result.user.getIdToken()
-    await fetch('/api/auth/session', {
+    const response = await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ token }),
     })
 
-    redirect('/dashboard')
+    if (response.ok) {
+      return { success: true }
+    } else {
+      return { error: 'Erro ao salvar sessão' }
+    }
   } catch (error: any) {
     return { error: error.message || 'Erro ao criar conta' }
   }
@@ -78,9 +81,10 @@ export async function signUp(formDataOrEmail: FormData | string, password?: stri
 
 export async function signOut() {
   try {
-    await firebaseSignOut(auth)
+    const { signOut: firebaseSignOut } = await import('firebase/auth')
+    await firebaseSignOut(getFirebaseAuth())
     await fetch('/api/auth/logout', { method: 'POST' })
-    redirect('/login')
+    window.location.href = '/login'
   } catch (error: any) {
     return { error: error.message || 'Erro ao sair' }
   }

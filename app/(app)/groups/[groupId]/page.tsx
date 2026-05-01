@@ -1,49 +1,61 @@
-import { notFound, redirect } from 'next/navigation'
-import { getCurrentUser } from '@/lib/firebase/server'
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
-import { firestore } from '@/lib/firebase/client'
-import { AlbumView } from '@/components/album/AlbumView'
+'use client'
+
+import { use, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
+import { doc, getDoc } from 'firebase/firestore'
 import { InviteSection } from '@/components/groups/InviteSection'
 import { GroupTabs } from '@/components/groups/GroupTabs'
-import { QuantityMap } from '@/lib/types'
+import { TradingHub } from '@/components/trades/TradingHub'
+import { Loader } from 'lucide-react'
 
-export default async function AlbumPage({ params }: { params: Promise<{ groupId: string }> }) {
-  const { groupId } = await params
-  const user = await getCurrentUser()
-  if (!user) redirect('/login')
+export default function GroupPage({ params }: { params: Promise<{ groupId: string }> }) {
+  const { groupId } = use(params)
+  const router = useRouter()
+  const [group, setGroup] = useState<{ name: string; inviteCode: string } | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Get group
-  const groupDoc = await getDoc(doc(firestore, 'groups', groupId))
-  if (!groupDoc.exists()) notFound()
+  useEffect(() => {
+    async function load() {
+      const auth = getFirebaseAuth()
+      await auth.authStateReady()
+      const user = auth.currentUser
+      if (!user) return
 
-  const group = groupDoc.data()
+      const db = getFirebaseFirestore()
 
-  // Verify user is a member
-  const memberDoc = await getDoc(doc(firestore, 'groupMembers', `${groupId}-${user.uid}`))
-  if (!memberDoc.exists()) notFound()
+      const groupDoc = await getDoc(doc(db, 'groups', groupId))
+      if (!groupDoc.exists()) { router.push('/dashboard'); return }
 
-  // Get user's stickers for this group
-  const q = query(
-    collection(firestore, 'userStickers'),
-    where('userId', '==', user.uid),
-    where('groupId', '==', groupId)
-  )
-  const stickersSnapshot = await getDocs(q)
+      const memberDoc = await getDoc(doc(db, 'groupMembers', `${groupId}-${user.uid}`))
+      if (!memberDoc.exists()) { router.push('/dashboard'); return }
 
-  const quantities: QuantityMap = {}
-  for (const doc of stickersSnapshot.docs) {
-    quantities[doc.data().stickerId] = doc.data().quantity
+      setGroup(groupDoc.data() as { name: string; inviteCode: string })
+      setLoading(false)
+    }
+    load()
+  }, [groupId, router])
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-12">
+        <Loader className="animate-spin text-green-600" size={32} />
+      </div>
+    )
   }
+
+  if (!group) return null
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">{group.name}</h1>
-      </div>
+      <h1 className="text-2xl font-bold text-gray-900">{group.name}</h1>
+      <GroupTabs groupId={groupId} active="trades" />
 
-      <GroupTabs groupId={groupId} active="album" />
+      {/* Default to trades view */}
+      <TradingHub groupId={groupId} />
+
+      {/* Invite section */}
       <InviteSection inviteCode={group.inviteCode} />
-      <AlbumView groupId={groupId} initialQuantities={quantities} />
     </div>
   )
 }
