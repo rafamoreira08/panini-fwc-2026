@@ -49,6 +49,11 @@
 
   body {
     @apply leading-relaxed;
+    overscroll-behavior: contain;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-barlow-condensed), system-ui, sans-serif;
   }
 }
 

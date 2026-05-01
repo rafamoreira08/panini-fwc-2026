@@ -10,8 +10,8 @@ export function ProgressBar({ have, total, showLabel = true, size = 'md' }: Prog
   const isComplete = pct === 100
 
   const heightClass = {
-    sm: 'h-1 bg-gray-200',
-    md: 'h-2 bg-gray-200',
+    sm: 'h-2 bg-gray-200',
+    md: 'h-3 bg-gray-200',
     lg: 'h-3 bg-gray-100',
   }[size]
 
@@ -26,7 +26,9 @@ export function ProgressBar({ have, total, showLabel = true, size = 'md' }: Prog
       <div className={`flex-1 ${heightClass} rounded-full overflow-hidden shadow-xs`}>
         <div
           className={`h-full rounded-full transition-all duration-500 ${
-            isComplete ? 'bg-green-500' : 'bg-green-400'
+            isComplete
+              ? 'bg-gradient-to-r from-green-500 to-emerald-400'
+              : 'bg-gradient-to-r from-green-500 to-emerald-400'
           } shadow-sm`}
           style={{ width: `${pct}%` }}
         />

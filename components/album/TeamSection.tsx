@@ -34,7 +34,7 @@ export function TeamSection({ code, name, group, stickers, quantities, onIncreme
               </span>
             )}
             <div className="min-w-0">
-              <h4 className={`font-semibold text-sm transition-colors ${
+              <h4 className={`font-display font-bold uppercase text-sm tracking-tight transition-colors ${
                 isComplete ? 'text-green-700' : 'text-gray-900'
               }`}>
                 {name}
@@ -44,14 +44,14 @@ export function TeamSection({ code, name, group, stickers, quantities, onIncreme
           </div>
 
           {isComplete ? (
-            <div className="flex items-center gap-1 px-2.5 py-1 bg-green-500 text-white rounded-full text-xs font-bold shrink-0">
+            <div className="flex items-center gap-1 px-2.5 py-1 bg-green-500 text-white rounded-full text-xs font-display font-bold uppercase tracking-wide shrink-0">
               <Check size={13} />
               <span>Completo</span>
             </div>
           ) : (
             <div className="text-right text-xs text-gray-500 shrink-0">
-              <div className="font-mono font-semibold">{have}/{stickers.length}</div>
-              <div className="text-gray-400">{Math.round((have / stickers.length) * 100)}%</div>
+              <div className="font-mono font-bold text-gray-700">{have}/{stickers.length}</div>
+              <div className="text-green-600 font-bold">{Math.round((have / stickers.length) * 100)}%</div>
             </div>
           )}
         </div>

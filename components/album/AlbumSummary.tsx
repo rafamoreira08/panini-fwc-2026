@@ -14,28 +14,40 @@ export function AlbumSummary({ sections }: AlbumSummaryProps) {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {sections.map(section => {
+        const pct = section.total === 0 ? 0 : Math.round((section.have / section.total) * 100)
         const isComplete = section.have === section.total && section.total > 0
 
         return (
           <div
             key={section.label}
-            className={`rounded-xl border p-3 ${
+            className={`rounded-xl border p-3 shadow-sm transition-all duration-200 ${
               isComplete
-                ? 'bg-green-50 border-green-300'
-                : 'bg-white'
+                ? 'bg-green-50 border-green-400 shadow-green-100'
+                : 'bg-white border-gray-200'
             }`}
           >
             <div className="flex items-center justify-between mb-2">
-              <span className={`font-semibold text-sm ${
-                isComplete ? 'text-green-700' : 'text-gray-800'
-              }`}>
+              <span
+                className={`font-display font-bold uppercase text-sm tracking-tight ${
+                  isComplete ? 'text-green-700' : 'text-gray-800'
+                }`}
+              >
                 {section.label}
               </span>
-              {isComplete && (
-                <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full font-bold">
-                  ✓
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={`text-xs font-bold tabular-nums ${
+                    isComplete ? 'text-green-600' : 'text-gray-500'
+                  }`}
+                >
+                  {pct}%
                 </span>
-              )}
+                {isComplete && (
+                  <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full font-bold leading-none">
+                    ✓
+                  </span>
+                )}
+              </div>
             </div>
             <ProgressBar have={section.have} total={section.total} />
           </div>

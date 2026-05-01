@@ -1,11 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
 import { AlbumView } from '@/components/album/AlbumView'
-import { Users, Plus, BookOpen, Loader, Share2 } from 'lucide-react'
+import { Loader } from 'lucide-react'
 import { getUserStickers } from '@/app/actions/stickers'
 import { ALL_STICKERS } from '@/lib/stickers'
 import { QuantityMap } from '@/lib/types'
@@ -58,43 +55,50 @@ export default function DashboardPage() {
       {/* Main Album Section */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-3xl font-bold text-gray-900">📖 Meu Álbum</h1>
-          <button className="text-sm text-gray-500 hover:text-gray-700 font-medium">
-            + Novo álbum
-          </button>
+          <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-gray-900">
+            ⚽ Meu Álbum
+          </h1>
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex-1">
-              <p className="text-sm text-gray-600 mb-3">Seu álbum pessoal compartilhado com todos os seus grupos</p>
-              <div className="flex items-baseline gap-3">
-                <span className="text-5xl font-bold text-green-600">{albumStats.have}</span>
-                <span className="text-xl text-gray-600">de {albumStats.total}</span>
-              </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+          <p className="text-sm text-gray-500 mb-5">
+            Seu álbum pessoal compartilhado com todos os seus grupos
+          </p>
+
+          {/* Stats row */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="text-center">
+              <p className="font-display text-4xl font-bold text-green-600 leading-none mb-1">
+                {albumStats.have}
+              </p>
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Tenho</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500 mb-2">Progresso</p>
-              <p className="text-4xl font-bold text-blue-600">{albumPercentage}%</p>
+            <div className="text-center border-x border-gray-100">
+              <p className="font-display text-4xl font-bold text-blue-600 leading-none mb-1">
+                {albumPercentage}%
+              </p>
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Progresso</p>
+            </div>
+            <div className="text-center">
+              <p className="font-display text-4xl font-bold text-amber-500 leading-none mb-1">
+                {albumStats.dupes}
+              </p>
+              <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Repetidas</p>
             </div>
           </div>
 
-          <div className="space-y-2 mb-4">
-            <div className="flex items-center gap-2 h-6 bg-gray-200 rounded-full overflow-hidden">
+          {/* Progress bar */}
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs text-gray-500 mb-1">
+              <span className="font-semibold">{albumStats.have} de {albumStats.total} figurinhas</span>
+              <span className="font-semibold text-gray-400">{albumStats.total - albumStats.have} faltando</span>
+            </div>
+            <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-green-500 to-blue-500 transition-all duration-500"
+                className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500 rounded-full"
                 style={{ width: `${Math.max(2, albumPercentage)}%` }}
               />
             </div>
-          </div>
-
-          <div className="flex gap-4 text-sm">
-            <span className="text-gray-600">
-              <span className="font-semibold text-gray-900">{albumStats.total - albumStats.have}</span> para completar
-            </span>
-            <span className="text-gray-400">•</span>
-            <span className="text-gray-600">
-              <span className="font-semibold text-amber-600">{albumStats.dupes}</span> repetidas para trocar
-            </span>
           </div>
         </div>
       </div>

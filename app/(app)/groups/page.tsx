@@ -78,20 +78,24 @@ export default function GroupsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="space-y-4">
-        <h1 className="text-4xl font-bold text-gray-900">Meus Grupos de Troca</h1>
-        <p className="text-gray-600">Gerenie seus grupos e negocie figurinhas com seus amigos</p>
+      <div className="space-y-1">
+        <h1 className="font-display text-3xl font-bold uppercase tracking-tight text-gray-900">
+          Meus Grupos de Troca
+        </h1>
+        <p className="text-gray-500">Gerencie seus grupos e negocie figurinhas com seus amigos</p>
       </div>
 
       {/* Join by code */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6">
         <div className="flex items-center gap-2 mb-4">
           <Share2 size={20} className="text-green-600" />
-          <h2 className="text-lg font-semibold text-gray-900">Entrar em um Grupo</h2>
+          <h2 className="font-display text-xl font-bold uppercase tracking-tight text-gray-900">
+            Entrar em um Grupo
+          </h2>
         </div>
         <form onSubmit={handleJoin} className="space-y-3">
           <div>
-            <label className="block text-sm text-gray-600 mb-2">Cole o código de convite</label>
+            <label className="block text-sm font-medium text-gray-600 mb-2">Cole o código de convite</label>
             <div className="flex gap-2">
               <Input
                 placeholder="Digite o código de convite"
@@ -107,7 +111,7 @@ export default function GroupsPage() {
           </div>
           {error && (
             <p className="text-red-600 text-sm flex items-center gap-2">
-              <span>⚠️</span>
+              <span className="font-semibold">Erro:</span>
               {error}
             </p>
           )}
@@ -117,7 +121,7 @@ export default function GroupsPage() {
       {/* Groups list */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="font-display text-2xl font-bold uppercase tracking-tight text-gray-900">
             {groups.length > 0 ? `Seus ${groups.length} Grupo${groups.length !== 1 ? 's' : ''}` : 'Nenhum Grupo Ainda'}
           </h2>
           <Link href="/groups/new">
@@ -134,17 +138,18 @@ export default function GroupsPage() {
               <Link
                 key={group.id}
                 href={`/groups/${group.id}`}
-                className="group"
+                className="group cursor-pointer"
               >
-                <div className="bg-white rounded-xl border border-gray-200 p-6 hover:border-green-300 hover:shadow-md transition-all duration-200 h-full">
+                <div className="bg-white rounded-xl border border-gray-200 p-6 hover:border-green-400 hover:shadow-lg transition-all duration-200 h-full touch-manipulation">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex-1">
-                      <h3 className="font-semibold text-gray-900 group-hover:text-green-700 transition-colors text-lg mb-1">
+                      <h3 className="font-display font-bold uppercase tracking-tight text-gray-900 group-hover:text-green-700 transition-colors text-lg mb-1">
                         {group.name}
                       </h3>
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
+                      <p className="text-xs text-gray-500 flex items-center gap-1 font-medium">
                         <Users size={14} />
-                        {group.memberCount} {group.memberCount === 1 ? 'membro' : 'membros'}
+                        <span className="font-bold text-gray-700">{group.memberCount}</span>
+                        {group.memberCount === 1 ? 'membro' : 'membros'}
                       </p>
                     </div>
                     <div className="p-3 bg-green-50 rounded-lg group-hover:bg-green-100 transition-colors">
@@ -153,7 +158,7 @@ export default function GroupsPage() {
                   </div>
 
                   <div className="border-t border-gray-100 pt-4 flex items-center justify-between">
-                    <p className="text-sm text-gray-600">Clique para acessar</p>
+                    <p className="text-sm text-gray-500">Clique para acessar</p>
                     <ArrowRight size={16} className="text-gray-400 group-hover:text-green-600 transition-colors" />
                   </div>
                 </div>
@@ -165,8 +170,10 @@ export default function GroupsPage() {
             <div className="bg-gray-50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
               <BookOpen className="text-gray-300" size={32} />
             </div>
-            <p className="font-semibold text-gray-900 text-lg mb-1">Você ainda não está em nenhum grupo</p>
-            <p className="text-gray-600 mb-6">Crie um novo grupo ou peça o código de convite para alguém</p>
+            <p className="font-display font-bold uppercase tracking-tight text-gray-900 text-xl mb-1">
+              Você ainda não está em nenhum grupo
+            </p>
+            <p className="text-gray-500 mb-6">Crie um novo grupo ou peça o código de convite para alguém</p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link href="/groups/new">
                 <Button size="lg">Criar Meu Primeiro Grupo</Button>

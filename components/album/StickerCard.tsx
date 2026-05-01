@@ -80,7 +80,7 @@ export function StickerCard({ stickerId, number, quantity, onIncrement, onDecrem
         onContextMenu={e => { e.preventDefault(); onDecrement(stickerId) }}
         aria-label={`Figurinha ${number} — ${missing ? 'Falta' : quantity === 1 ? 'Tenho' : `${quantity - 1} repetida(s)`}`}
         className={cn(
-          'relative w-11 h-11 rounded-lg flex items-center justify-center text-xs font-bold border-2 transition-colors select-none touch-manipulation',
+          'relative w-12 h-12 rounded-lg flex items-center justify-center text-xs font-bold border-2 transition-colors duration-150 select-none touch-manipulation cursor-pointer',
           {
             'bg-gray-100 border-gray-200 text-gray-400': missing,
             'bg-green-50 border-green-400 text-green-700': quantity === 1,

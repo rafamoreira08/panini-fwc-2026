@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['var(--font-barlow)', 'system-ui', 'sans-serif'],
+        display: ['var(--font-barlow-condensed)', 'system-ui', 'sans-serif'],
+      },
       colors: {
         primary: 'rgb(22 163 74 / <alpha-value>)',
         secondary: 'rgb(59 130 246 / <alpha-value>)',
