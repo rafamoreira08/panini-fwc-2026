@@ -36,9 +36,9 @@ export function Navbar({ userName }: NavbarProps) {
           </Link>
 
           <Link
-            href="/dashboard#grupos"
+            href="/groups"
             className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all ${
-              pathname.includes('/groups') && !pathname.includes('/groups/new')
+              pathname === '/groups'
                 ? 'bg-green-50 text-green-700 font-semibold'
                 : 'text-gray-600 hover:bg-gray-50'
             }`}
