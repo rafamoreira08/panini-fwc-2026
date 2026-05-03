@@ -24,11 +24,11 @@ export async function signIn(formDataOrEmail: FormData | string, password?: stri
       body: JSON.stringify({ token }),
     })
 
-    if (response.ok) {
-      return { success: true }
-    } else {
+    if (!response.ok) {
       return { error: 'Erro ao salvar sessão' }
     }
+
+    return { success: true }
   } catch (error: any) {
     return { error: error.message || 'Erro ao entrar' }
   }

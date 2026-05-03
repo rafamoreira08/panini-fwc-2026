@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { upsertSticker } from '@/app/actions/stickers'
 import { ALL_STICKERS, GROUPS, TEAMS, StickerDef } from '@/lib/stickers'
 import { TeamSection } from './TeamSection'
@@ -10,11 +10,17 @@ import { QuantityMap } from '@/lib/types'
 
 interface AlbumViewProps {
   initialQuantities: QuantityMap
+  onQuantitiesChange?: (quantities: QuantityMap) => void
 }
 
-export function AlbumView({ initialQuantities }: AlbumViewProps) {
+export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewProps) {
   const [quantities, setQuantities] = useState<QuantityMap>(initialQuantities)
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  // Notificar pai quando quantities mudar
+  useEffect(() => {
+    onQuantitiesChange?.(quantities)
+  }, [quantities, onQuantitiesChange])
 
   const persist = useCallback((stickerId: string, qty: number) => {
     clearTimeout(timers.current[stickerId])

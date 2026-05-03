@@ -22,13 +22,6 @@ export default function DashboardPage() {
         if (!user) return
 
         const stickers = await getUserStickers(user.uid)
-        let have = 0,
-          dupes = 0
-        for (const qty of Object.values(stickers)) {
-          if (qty >= 1) have++
-          if (qty >= 2) dupes++
-        }
-        setAlbumStats({ have, dupes, total: ALL_STICKERS.length })
         setQuantities(stickers)
       } catch (err) {
         console.error('Failed to load album:', err)
@@ -39,6 +32,17 @@ export default function DashboardPage() {
 
     loadAlbum()
   }, [])
+
+  // Atualizar stats em tempo real baseado em quantities
+  useEffect(() => {
+    let have = 0,
+      dupes = 0
+    for (const qty of Object.values(quantities)) {
+      if (qty >= 1) have++
+      if (qty >= 2) dupes++
+    }
+    setAlbumStats({ have, dupes, total: ALL_STICKERS.length })
+  }, [quantities])
 
   if (loading) {
     return (
@@ -104,7 +108,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Album View */}
-      <AlbumView initialQuantities={quantities} />
+      <AlbumView initialQuantities={quantities} onQuantitiesChange={setQuantities} />
     </div>
   )
 }

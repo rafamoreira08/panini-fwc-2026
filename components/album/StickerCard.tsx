@@ -8,14 +8,16 @@ const LONG_PRESS_MS = 400
 interface StickerCardProps {
   stickerId: string
   number: number
+  sequentialId: number
   quantity: number
   onIncrement: (id: string) => void
   onDecrement: (id: string) => void
+  showSequential?: boolean
 }
 
-export function StickerCard({ stickerId, number, quantity, onIncrement, onDecrement }: StickerCardProps) {
+export function StickerCard({ stickerId, number, sequentialId, quantity, onIncrement, onDecrement, showSequential = false }: StickerCardProps) {
   const [open, setOpen] = useState(false)
-  const timerRef = useRef<ReturnType<typeof setTimeout>>()
+  const timerRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const didLongPress = useRef(false)
 
   const missing = quantity === 0
@@ -78,17 +80,19 @@ export function StickerCard({ stickerId, number, quantity, onIncrement, onDecrem
         onPointerLeave={cancelPress}
         onPointerCancel={cancelPress}
         onContextMenu={e => { e.preventDefault(); onDecrement(stickerId) }}
-        aria-label={`Figurinha ${number} — ${missing ? 'Falta' : quantity === 1 ? 'Tenho' : `${quantity - 1} repetida(s)`}`}
+        aria-label={`${stickerId} (#${sequentialId}) — ${missing ? 'Falta' : quantity === 1 ? 'Tenho' : `${quantity - 1} repetida(s)`}`}
         className={cn(
-          'relative w-12 h-12 rounded-lg flex items-center justify-center text-xs font-bold border-2 transition-colors duration-150 select-none touch-manipulation cursor-pointer',
+          'relative w-12 h-12 rounded-lg flex flex-col items-center justify-center text-xs font-bold border-2 transition-colors duration-150 select-none touch-manipulation cursor-pointer',
           {
             'bg-gray-100 border-gray-200 text-gray-400': missing,
             'bg-green-50 border-green-400 text-green-700': quantity === 1,
             'bg-amber-50 border-amber-400 text-amber-700': duplicate,
           }
         )}
+        title={`${stickerId} (#${sequentialId})`}
       >
-        {number}
+        <span className="leading-tight text-[10px]">{showSequential ? sequentialId : stickerId.split('-')[1]}</span>
+        <span className="text-[7px] opacity-60 leading-none">{showSequential ? `#${sequentialId}` : '#'+sequentialId}</span>
         {duplicate && (
           <span className="absolute -top-1.5 -right-1.5 bg-amber-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center leading-none pointer-events-none">
             +{quantity - 1}

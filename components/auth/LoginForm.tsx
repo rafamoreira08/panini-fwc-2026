@@ -21,14 +21,15 @@ export function LoginForm() {
       const result = await signIn(new FormData(e.currentTarget))
       if (result?.error) {
         setError(result.error)
+        setLoading(false)
       } else if (result?.success) {
+        await new Promise(resolve => setTimeout(resolve, 2000))
         router.push('/dashboard')
-        return
       }
     } catch (err: any) {
       setError(err.message || 'Erro inesperado')
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   return (

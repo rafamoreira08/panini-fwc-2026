@@ -14,6 +14,7 @@ interface Group {
   name: string
   inviteCode: string
   createdBy: string
+  joinedAt?: any
 }
 
 export default function GroupsPage() {

@@ -13,6 +13,7 @@ export interface StickerDef {
   group: string | null
   number: number
   section: StickerSection
+  sequentialId: number
 }
 
 export const GROUPS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L'] as const
@@ -74,18 +75,22 @@ function pad(n: number): string {
 
 function generateStickers(): StickerDef[] {
   const stickers: StickerDef[] = []
+  let sequentialId = 1
 
-  for (let i = 0; i <= 19; i++) {
+  // Página Inicial (1-9)
+  for (let i = 0; i <= 8; i++) {
     stickers.push({
       id: `FWC-${pad(i)}`,
       code: 'FWC',
-      name: i <= 8 ? 'Página Inicial' : 'FIFA World Cup History',
+      name: 'Página Inicial',
       group: null,
       number: i,
       section: 'fwc',
+      sequentialId: sequentialId++,
     })
   }
 
+  // TEAMS (10-969)
   for (const team of TEAMS) {
     for (let i = 1; i <= 20; i++) {
       stickers.push({
@@ -95,10 +100,25 @@ function generateStickers(): StickerDef[] {
         group: team.group,
         number: i,
         section: 'team',
+        sequentialId: sequentialId++,
       })
     }
   }
 
+  // FIFA World Cup History (970-980)
+  for (let i = 9; i <= 19; i++) {
+    stickers.push({
+      id: `FWC-${pad(i)}`,
+      code: 'FWC',
+      name: 'FIFA World Cup History',
+      group: null,
+      number: i,
+      section: 'fwc',
+      sequentialId: sequentialId++,
+    })
+  }
+
+  // Coca-Cola (981-994)
   for (let i = 1; i <= 14; i++) {
     stickers.push({
       id: `CC-${pad(i)}`,
@@ -107,6 +127,7 @@ function generateStickers(): StickerDef[] {
       group: null,
       number: i,
       section: 'coca_cola',
+      sequentialId: sequentialId++,
     })
   }
 

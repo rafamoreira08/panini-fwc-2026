@@ -2,6 +2,8 @@ import type { NextConfig } from 'next'
 import path from 'path'
 
 const nextConfig: NextConfig = {
+  basePath: '',
+  turbopack: {},
   webpack: (config, { isServer }) => {
     if (isServer) {
       // Force Firebase to use browser bundles (HTTP) instead of Node.js bundles (gRPC)

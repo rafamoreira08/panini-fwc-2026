@@ -69,6 +69,7 @@ export function TeamSection({ code, name, group, stickers, quantities, onIncreme
             key={s.id}
             stickerId={s.id}
             number={s.number}
+            sequentialId={s.sequentialId}
             quantity={quantities[s.id] ?? 0}
             onIncrement={onIncrement}
             onDecrement={onDecrement}
