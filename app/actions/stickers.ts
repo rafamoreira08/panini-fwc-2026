@@ -8,6 +8,9 @@ import {
   where,
   deleteDoc,
   serverTimestamp,
+  startAt,
+  endAt,
+  orderBy,
 } from 'firebase/firestore'
 
 async function getUid(): Promise<string> {
@@ -37,13 +40,16 @@ export async function upsertSticker(stickerId: string, quantity: number) {
 
 export async function getUserStickers(userId: string): Promise<Record<string, number>> {
   const db = getFirebaseFirestore()
-  const q = query(collection(db, 'userStickers'))
+  const q = query(
+    collection(db, 'userStickers'),
+    orderBy('__name__'),
+    startAt(`${userId}-`),
+    endAt(`${userId}-`)
+  )
   const snapshot = await getDocs(q)
   const result: Record<string, number> = {}
   for (const d of snapshot.docs) {
-    if (d.data().userId === userId) {
-      result[d.data().stickerId] = d.data().quantity
-    }
+    result[d.data().stickerId] = d.data().quantity
   }
   return result
 }
