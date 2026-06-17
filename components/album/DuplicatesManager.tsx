@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { ChevronDown, Minus, Plus, Copy, Check } from 'lucide-react'
+import { ChevronDown, Copy, Check } from 'lucide-react'
 import { ALL_STICKERS } from '@/lib/stickers'
 import { QuantityMap } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -9,11 +9,10 @@ import { getEmojiForSticker } from '@/lib/flagEmojis'
 
 interface DuplicatesManagerProps {
   quantities: QuantityMap
-  onQuantityChange: (stickerId: string, quantity: number) => void
   duplicatesCount: number
 }
 
-export function DuplicatesManager({ quantities, onQuantityChange, duplicatesCount }: DuplicatesManagerProps) {
+export function DuplicatesManager({ quantities, duplicatesCount }: DuplicatesManagerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
 
@@ -23,16 +22,6 @@ export function DuplicatesManager({ quantities, onQuantityChange, duplicatesCoun
       quantity: quantities[s.id] ?? 0,
     }))
     .sort((a, b) => a.sequentialId - b.sequentialId)
-
-  const handleDecrement = (stickerId: string, currentQty: number) => {
-    if (currentQty > 0) {
-      onQuantityChange(stickerId, currentQty - 1)
-    }
-  }
-
-  const handleIncrement = (stickerId: string, currentQty: number) => {
-    onQuantityChange(stickerId, currentQty + 1)
-  }
 
   const handleCopyToClipboard = () => {
     const text = duplicates
@@ -102,6 +91,7 @@ export function DuplicatesManager({ quantities, onQuantityChange, duplicatesCoun
                 <div className="divide-y overflow-y-auto">
                   {duplicates.map(sticker => {
                     const emoji = getEmojiForSticker(sticker.code)
+                    const reps = sticker.quantity - 1
                     return (
                       <div key={sticker.id} className="p-3 flex items-center gap-3 hover:bg-gray-50">
                         <span className="text-xl shrink-0" aria-hidden>{emoji}</span>
@@ -115,24 +105,9 @@ export function DuplicatesManager({ quantities, onQuantityChange, duplicatesCoun
                           <p className="text-xs text-gray-600 truncate">{sticker.name}</p>
                         </div>
 
-                        {/* Quantity Controls */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() => handleDecrement(sticker.id, sticker.quantity)}
-                            className="p-1.5 rounded-md bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
-                            aria-label="Remover 1"
-                          >
-                            <Minus size={14} />
-                          </button>
-                          <span className="text-sm font-bold w-6 text-center tabular-nums">{sticker.quantity}</span>
-                          <button
-                            onClick={() => handleIncrement(sticker.id, sticker.quantity)}
-                            className="p-1.5 rounded-md bg-green-50 hover:bg-green-100 text-green-600 transition-colors"
-                            aria-label="Adicionar 1"
-                          >
-                            <Plus size={14} />
-                          </button>
-                        </div>
+                        <span className="shrink-0 text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-md whitespace-nowrap tabular-nums">
+                          +{reps}
+                        </span>
                       </div>
                     )
                   })}

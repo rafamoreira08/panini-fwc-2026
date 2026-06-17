@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { AlbumView } from '@/components/album/AlbumView'
 import { DuplicatesManager } from '@/components/album/DuplicatesManager'
 import { MissingManager } from '@/components/album/MissingManager'
 import { Loader } from 'lucide-react'
-import { upsertSticker } from '@/app/actions/stickers'
 import { ALL_STICKERS } from '@/lib/stickers'
 import { QuantityMap } from '@/lib/types'
 import { getFirebaseAuth } from '@/lib/firebase/client'
@@ -68,11 +67,6 @@ export default function DashboardPage() {
     setAlbumStats({ have, dupes, missing, total: ALL_STICKERS.length })
   }, [quantities])
 
-  const handleDuplicateChange = useCallback((stickerId: string, quantity: number) => {
-    setQuantities(prev => ({ ...prev, [stickerId]: quantity }))
-    upsertSticker(stickerId, quantity).catch(console.error)
-  }, [])
-
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -113,9 +107,8 @@ export default function DashboardPage() {
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Progresso</p>
             </div>
             <div>
-              <DuplicatesManager 
+              <DuplicatesManager
                 quantities={quantities}
-                onQuantityChange={handleDuplicateChange}
                 duplicatesCount={albumStats.dupes}
               />
             </div>

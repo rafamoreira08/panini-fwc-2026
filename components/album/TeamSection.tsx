@@ -14,11 +14,15 @@ interface TeamSectionProps {
   quantities: Record<string, number>
   onIncrement: (id: string) => void
   onDecrement: (id: string) => void
+  /** Optional full sticker list — when set (e.g. when stickers is a filtered subset), progress is computed against it instead of the filtered list. */
+  fullStickers?: StickerDef[]
 }
 
-export function TeamSection({ code, name, group, stickers, quantities, onIncrement, onDecrement }: TeamSectionProps) {
-  const have = stickers.filter(s => (quantities[s.id] ?? 0) >= 1).length
-  const isComplete = have === stickers.length && stickers.length > 0
+export function TeamSection({ code, name, group, stickers, quantities, onIncrement, onDecrement, fullStickers }: TeamSectionProps) {
+  const progressList = fullStickers ?? stickers
+  const have = progressList.filter(s => (quantities[s.id] ?? 0) >= 1).length
+  const total = progressList.length
+  const isComplete = have === total && total > 0
   const flag = getEmojiForSticker(code)
 
   return (
@@ -55,8 +59,8 @@ export function TeamSection({ code, name, group, stickers, quantities, onIncreme
             </div>
           ) : (
             <div className="text-right text-xs text-gray-500 shrink-0">
-              <div className="font-mono font-bold text-gray-700">{have}/{stickers.length}</div>
-              <div className="text-green-600 font-bold">{Math.round((have / stickers.length) * 100)}%</div>
+              <div className="font-mono font-bold text-gray-700">{have}/{total}</div>
+              <div className="text-green-600 font-bold">{Math.round((have / total) * 100)}%</div>
             </div>
           )}
         </div>
@@ -64,7 +68,7 @@ export function TeamSection({ code, name, group, stickers, quantities, onIncreme
 
       {!isComplete && (
         <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
-          <ProgressBar have={have} total={stickers.length} size="sm" />
+          <ProgressBar have={have} total={total} size="sm" />
         </div>
       )}
 
