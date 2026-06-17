@@ -5,10 +5,11 @@ import { AlbumView } from '@/components/album/AlbumView'
 import { DuplicatesManager } from '@/components/album/DuplicatesManager'
 import { MissingManager } from '@/components/album/MissingManager'
 import { Loader } from 'lucide-react'
-import { getUserStickers, upsertSticker } from '@/app/actions/stickers'
+import { upsertSticker } from '@/app/actions/stickers'
 import { ALL_STICKERS } from '@/lib/stickers'
 import { QuantityMap } from '@/lib/types'
-import { getFirebaseAuth } from '@/lib/firebase/client'
+import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
+import { collection, getDocs } from 'firebase/firestore'
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
@@ -23,8 +24,18 @@ export default function DashboardPage() {
         const user = auth.currentUser
         if (!user) return
 
-        const stickers = await getUserStickers(user.uid)
-        setQuantities(stickers)
+        const db = getFirebaseFirestore()
+        const snapshot = await getDocs(collection(db, 'userStickers'))
+
+        const result: QuantityMap = {}
+        for (const doc of snapshot.docs) {
+          const data = doc.data()
+          if (data.userId === user.uid) {
+            result[data.stickerId] = data.quantity
+          }
+        }
+
+        setQuantities(result)
       } catch (err) {
         console.error('Failed to load album:', err)
       } finally {
