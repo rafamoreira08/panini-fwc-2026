@@ -4,6 +4,7 @@ import {
   doc,
   setDoc,
   getDocs,
+  getDoc,
   query,
   where,
   deleteDoc,
@@ -97,10 +98,24 @@ export async function getMyDuplicatesWithNeeders(groupId: string) {
     }
   }
 
+  const userNames = new Map<string, string>()
+  for (const userIds of Object.values(needers)) {
+    for (const userId of userIds) {
+      if (!userNames.has(userId)) {
+        const userDoc = await getDoc(doc(db, 'users', userId))
+        const userName = userDoc.data()?.name ?? userId
+        userNames.set(userId, userName)
+      }
+    }
+  }
+
   return Array.from(myStickers.entries()).map(([stickerId, qty]) => ({
-    stickerId,
+    sticker_id: stickerId,
     quantity: qty,
-    needers: needers[stickerId] ?? [],
+    needers: (needers[stickerId] ?? []).map(userId => ({
+      user_id: userId,
+      name: userNames.get(userId) || userId,
+    })),
   }))
 }
 
@@ -113,6 +128,56 @@ async function getGroupMembers(groupId: string): Promise<Array<{ userId: string;
     }
   }
   return []
+}
+
+export async function findTradersForSticker(groupId: string, stickerId: string) {
+  const uid = await getUid()
+  const db = getFirebaseFirestore()
+
+  const q = query(
+    collection(db, 'userStickers'),
+    where('stickerId', '==', stickerId),
+    where('quantity', '>=', 2)
+  )
+  const snapshot = await getDocs(q)
+
+  const myStickersSnap = await getDocs(
+    query(collection(db, 'userStickers'), where('userId', '==', uid))
+  )
+  const myStickers = new Set<string>()
+  for (const d of myStickersSnap.docs) {
+    if (d.data().quantity >= 2) {
+      myStickers.add(d.data().stickerId)
+    }
+  }
+
+  const traders = []
+  for (const docSnap of snapshot.docs) {
+    const traderId = docSnap.data().userId
+    if (traderId === uid) continue
+
+    const traderStickersSnap = await getDocs(
+      query(collection(db, 'userStickers'), where('userId', '==', traderId))
+    )
+    const traderStickers = new Set<string>()
+    for (const d of traderStickersSnap.docs) {
+      traderStickers.add(d.data().stickerId)
+    }
+
+    const canOffer = Array.from(myStickers).filter(s => !traderStickers.has(s))
+
+    const userDocRef = await getDoc(doc(db, 'users', traderId))
+    const userName = userDocRef.data()?.name ?? traderId
+
+    traders.push({
+      user_id: traderId,
+      name: userName,
+      quantity: docSnap.data().quantity,
+      canOffer,
+    })
+  }
+
+  return traders
 }
 
 export async function signOut() {
