@@ -1,16 +1,18 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AlbumView } from '@/components/album/AlbumView'
+import { DuplicatesManager } from '@/components/album/DuplicatesManager'
+import { MissingManager } from '@/components/album/MissingManager'
 import { Loader } from 'lucide-react'
-import { getUserStickers } from '@/app/actions/stickers'
+import { getUserStickers, upsertSticker } from '@/app/actions/stickers'
 import { ALL_STICKERS } from '@/lib/stickers'
 import { QuantityMap } from '@/lib/types'
 import { getFirebaseAuth } from '@/lib/firebase/client'
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
-  const [albumStats, setAlbumStats] = useState({ have: 0, total: ALL_STICKERS.length, dupes: 0 })
+  const [albumStats, setAlbumStats] = useState({ have: 0, total: ALL_STICKERS.length, dupes: 0, missing: 0 })
   const [quantities, setQuantities] = useState<QuantityMap>({})
 
   useEffect(() => {
@@ -39,10 +41,16 @@ export default function DashboardPage() {
       dupes = 0
     for (const qty of Object.values(quantities)) {
       if (qty >= 1) have++
-      if (qty >= 2) dupes++
+      if (qty >= 2) dupes += qty - 1
     }
-    setAlbumStats({ have, dupes, total: ALL_STICKERS.length })
+    const missing = ALL_STICKERS.length - have
+    setAlbumStats({ have, dupes, missing, total: ALL_STICKERS.length })
   }, [quantities])
+
+  const handleDuplicateChange = useCallback((stickerId: string, quantity: number) => {
+    setQuantities(prev => ({ ...prev, [stickerId]: quantity }))
+    upsertSticker(stickerId, quantity).catch(console.error)
+  }, [])
 
   if (loading) {
     return (
@@ -70,24 +78,31 @@ export default function DashboardPage() {
           </p>
 
           {/* Stats row */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-4 mb-6 lg:grid-cols-4">
             <div className="text-center">
               <p className="font-display text-4xl font-bold text-green-600 leading-none mb-1">
                 {albumStats.have}
               </p>
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Tenho</p>
             </div>
-            <div className="text-center border-x border-gray-100">
+            <div className="text-center border-l border-gray-100 lg:border-l-0 lg:border-x">
               <p className="font-display text-4xl font-bold text-blue-600 leading-none mb-1">
                 {albumPercentage}%
               </p>
               <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Progresso</p>
             </div>
-            <div className="text-center">
-              <p className="font-display text-4xl font-bold text-amber-500 leading-none mb-1">
-                {albumStats.dupes}
-              </p>
-              <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Repetidas</p>
+            <div>
+              <DuplicatesManager 
+                quantities={quantities}
+                onQuantityChange={handleDuplicateChange}
+                duplicatesCount={albumStats.dupes}
+              />
+            </div>
+            <div>
+              <MissingManager 
+                quantities={quantities}
+                missingCount={albumStats.missing}
+              />
             </div>
           </div>
 
@@ -95,7 +110,7 @@ export default function DashboardPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-xs text-gray-500 mb-1">
               <span className="font-semibold">{albumStats.have} de {albumStats.total} figurinhas</span>
-              <span className="font-semibold text-gray-400">{albumStats.total - albumStats.have} faltando</span>
+              <span className="font-semibold text-gray-400">{albumStats.missing} faltando</span>
             </div>
             <div className="h-4 bg-gray-100 rounded-full overflow-hidden">
               <div
