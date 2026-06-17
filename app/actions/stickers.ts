@@ -19,19 +19,19 @@ async function getUid(): Promise<string> {
 }
 
 export async function upsertSticker(stickerId: string, quantity: number) {
-  const uid = await getUid()
-  const db = getFirebaseFirestore()
-  const docId = `${uid}-${stickerId}`
+  const auth = getFirebaseAuth()
+  await auth.authStateReady()
+  if (!auth.currentUser) throw new Error('Não autenticado')
+  const token = await auth.currentUser.getIdToken()
 
-  if (quantity === 0) {
-    await deleteDoc(doc(db, 'userStickers', docId))
-  } else {
-    await setDoc(doc(db, 'userStickers', docId), {
-      userId: uid,
-      stickerId,
-      quantity,
-      updatedAt: serverTimestamp(),
-    })
+  const response = await fetch('/api/upsert-sticker', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, stickerId, quantity }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Falha ao salvar figurinha (${response.status})`)
   }
 }
 
