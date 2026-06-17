@@ -37,11 +37,13 @@ export async function upsertSticker(stickerId: string, quantity: number) {
 
 export async function getUserStickers(userId: string): Promise<Record<string, number>> {
   const db = getFirebaseFirestore()
-  const q = query(collection(db, 'userStickers'), where('userId', '==', userId))
+  const q = query(collection(db, 'userStickers'))
   const snapshot = await getDocs(q)
   const result: Record<string, number> = {}
   for (const d of snapshot.docs) {
-    result[d.data().stickerId] = d.data().quantity
+    if (d.data().userId === userId) {
+      result[d.data().stickerId] = d.data().quantity
+    }
   }
   return result
 }
