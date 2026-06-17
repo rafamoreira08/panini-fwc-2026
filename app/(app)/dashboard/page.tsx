@@ -9,7 +9,7 @@ import { upsertSticker } from '@/app/actions/stickers'
 import { ALL_STICKERS } from '@/lib/stickers'
 import { QuantityMap } from '@/lib/types'
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
-import { collection, getDocs } from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
@@ -33,19 +33,16 @@ export default function DashboardPage() {
 
         const db = getFirebaseFirestore()
         console.log('[Dashboard] Firestore initialized, fetching userStickers...')
-        const snapshot = await getDocs(collection(db, 'userStickers'))
-        console.log('[Dashboard] Got snapshot with', snapshot.docs.length, 'documents')
+        const q = query(collection(db, 'userStickers'), where('userId', '==', user.uid))
+        const snapshot = await getDocs(q)
+        console.log('[Dashboard] Got snapshot with', snapshot.docs.length, 'documents for userId', user.uid)
 
         const result: QuantityMap = {}
-        let count = 0
         for (const doc of snapshot.docs) {
           const data = doc.data()
-          if (data.userId === user.uid) {
-            result[data.stickerId] = data.quantity
-            count++
-          }
+          result[data.stickerId] = data.quantity
         }
-        console.log('[Dashboard] Filtered to', count, 'stickers for user', user.uid)
+        console.log('[Dashboard] Loaded', Object.keys(result).length, 'stickers')
 
         setQuantities(result)
       } catch (err) {
