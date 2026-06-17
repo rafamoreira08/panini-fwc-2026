@@ -104,12 +104,12 @@ export async function getMyDuplicatesWithNeeders(groupId: string) {
   }))
 }
 
-async function getGroupMembers(groupId: string) {
+async function getGroupMembers(groupId: string): Promise<Array<{ userId: string; teamCode: string }>> {
   const db = getFirebaseFirestore()
   const docSnap = await getDocs(query(collection(db, 'groups')))
   for (const d of docSnap.docs) {
     if (d.id === groupId) {
-      return d.data().members || []
+      return (d.data().members || []) as Array<{ userId: string; teamCode: string }>
     }
   }
   return []
