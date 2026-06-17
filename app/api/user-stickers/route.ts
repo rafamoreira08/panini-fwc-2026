@@ -28,8 +28,8 @@ export async function POST(req: NextRequest) {
     console.log('[API] userId:', userId)
 
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
-    const database = `projects/${projectId}/databases/(default)`
-    const url = `https://firestore.googleapis.com/v1/${database}:runQuery`
+    const parent = `projects/${projectId}/databases/(default)/documents`
+    const url = `https://firestore.googleapis.com/v1/${parent}:runQuery`
 
     const queryBody = {
       structuredQuery: {
@@ -59,22 +59,18 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('[API] Firestore error:', error)
+      console.error('[API] Firestore error:', response.status, error)
       return NextResponse.json({ error: 'Firestore error' }, { status: response.status })
     }
 
-    const text = await response.text()
-    const lines = text.trim().split('\n')
+    const items = await response.json()
     const result: Record<string, number> = {}
 
-    for (const line of lines) {
-      if (!line) continue
-      const data = JSON.parse(line)
-
-      if (data.document) {
-        const fields = data.document.fields
+    for (const item of items) {
+      if (item.document) {
+        const fields = item.document.fields
         const stickerId = fields.stickerId?.stringValue
-        const quantity = fields.quantity?.integerValue || 0
+        const quantity = Number(fields.quantity?.integerValue ?? 0)
         result[stickerId] = quantity
       }
     }
