@@ -3,6 +3,7 @@
 import { StickerCard } from './StickerCard'
 import { ProgressBar } from './ProgressBar'
 import { StickerDef } from '@/lib/stickers'
+import { getEmojiForSticker } from '@/lib/flagEmojis'
 import { Check } from 'lucide-react'
 
 interface TeamSectionProps {
@@ -18,6 +19,7 @@ interface TeamSectionProps {
 export function TeamSection({ code, name, group, stickers, quantities, onIncrement, onDecrement }: TeamSectionProps) {
   const have = stickers.filter(s => (quantities[s.id] ?? 0) >= 1).length
   const isComplete = have === stickers.length && stickers.length > 0
+  const flag = getEmojiForSticker(code)
 
   return (
     <div className={`rounded-lg border transition-all ${
@@ -32,6 +34,9 @@ export function TeamSection({ code, name, group, stickers, quantities, onIncreme
               <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-full shrink-0">
                 Grupo {group}
               </span>
+            )}
+            {flag && (
+              <span className="text-2xl shrink-0 leading-none" aria-hidden>{flag}</span>
             )}
             <div className="min-w-0">
               <h4 className={`font-display font-bold uppercase text-sm tracking-tight transition-colors ${
