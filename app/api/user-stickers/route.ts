@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-function decodeToken(token: string): { uid: string } | null {
+function decodeToken(token: string): { user_id?: string; sub?: string } | null {
   try {
     const parts = token.split('.')
     if (parts.length !== 3) return null
@@ -21,11 +21,10 @@ export async function POST(req: NextRequest) {
     }
 
     const decoded = decodeToken(token)
-    if (!decoded?.uid) {
+    const userId = decoded?.user_id || decoded?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
-
-    const userId = decoded.uid
     console.log('[API] userId:', userId)
 
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
