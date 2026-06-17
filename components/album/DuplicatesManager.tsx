@@ -71,7 +71,7 @@ export function DuplicatesManager({ quantities, onQuantityChange, duplicatesCoun
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
           {/* Dropdown Panel */}
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 sm:w-[400px] mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-[70vh] flex flex-col overflow-hidden">
             {duplicates.length === 0 ? (
               <div className="p-4 text-center text-gray-500 text-sm">
                 Você não tem figurinhas repetidas ainda
@@ -79,7 +79,7 @@ export function DuplicatesManager({ quantities, onQuantityChange, duplicatesCoun
             ) : (
               <>
                 {/* Header com botão de copiar */}
-                <div className="sticky top-0 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-gray-200 flex gap-2">
+                <div className="p-3 bg-gradient-to-r from-amber-50 to-yellow-50 border-b border-gray-200 flex gap-2 shrink-0">
                   <button
                     onClick={handleCopyToClipboard}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-semibold text-sm transition-colors"
@@ -99,39 +99,38 @@ export function DuplicatesManager({ quantities, onQuantityChange, duplicatesCoun
                 </div>
 
                 {/* List */}
-                <div className="divide-y">
+                <div className="divide-y overflow-y-auto">
                   {duplicates.map(sticker => {
                     const emoji = getEmojiForSticker(sticker.code)
-                    const reps = sticker.quantity - 1
                     return (
-                      <div key={sticker.id} className="p-3 flex items-center justify-between hover:bg-gray-50">
+                      <div key={sticker.id} className="p-3 flex items-center gap-3 hover:bg-gray-50">
+                        <span className="text-xl shrink-0" aria-hidden>{emoji}</span>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xl">{emoji}</span>
-                            <span className="text-sm font-bold text-gray-900">{sticker.id}</span>
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-mono">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-sm font-bold text-gray-900 whitespace-nowrap">{sticker.id}</span>
+                            <span className="text-[10px] leading-none bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono whitespace-nowrap">
                               #{sticker.sequentialId}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-600">{sticker.name}</p>
+                          <p className="text-xs text-gray-600 truncate">{sticker.name}</p>
                         </div>
 
                         {/* Quantity Controls */}
-                        <div className="flex items-center gap-2 ml-4">
+                        <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => handleDecrement(sticker.id, sticker.quantity)}
-                            className="p-1 rounded bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
-                            title="Remover 1"
+                            className="p-1.5 rounded-md bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                            aria-label="Remover 1"
                           >
-                            <Minus size={16} />
+                            <Minus size={14} />
                           </button>
-                          <span className="text-sm font-bold w-8 text-center">{sticker.quantity}</span>
+                          <span className="text-sm font-bold w-6 text-center tabular-nums">{sticker.quantity}</span>
                           <button
                             onClick={() => handleIncrement(sticker.id, sticker.quantity)}
-                            className="p-1 rounded bg-green-50 hover:bg-green-100 text-green-600 transition-colors"
-                            title="Adicionar 1"
+                            className="p-1.5 rounded-md bg-green-50 hover:bg-green-100 text-green-600 transition-colors"
+                            aria-label="Adicionar 1"
                           >
-                            <Plus size={16} />
+                            <Plus size={14} />
                           </button>
                         </div>
                       </div>

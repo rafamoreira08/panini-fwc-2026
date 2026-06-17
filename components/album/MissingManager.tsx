@@ -55,7 +55,7 @@ export function MissingManager({ quantities, missingCount }: MissingManagerProps
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
 
           {/* Dropdown Panel */}
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+          <div className="absolute top-full left-0 right-0 sm:left-auto sm:right-0 sm:w-[400px] mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-[70vh] flex flex-col overflow-hidden">
             {missing.length === 0 ? (
               <div className="p-4 text-center text-gray-500 text-sm font-semibold">
                 ✅ Parabéns! Você completou o álbum!
@@ -63,7 +63,7 @@ export function MissingManager({ quantities, missingCount }: MissingManagerProps
             ) : (
               <>
                 {/* Header com botão de copiar */}
-                <div className="sticky top-0 p-3 bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-200 flex gap-2">
+                <div className="p-3 bg-gradient-to-r from-gray-50 to-slate-50 border-b border-gray-200 flex gap-2 shrink-0">
                   <button
                     onClick={handleCopyToClipboard}
                     className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-semibold text-sm transition-colors"
@@ -83,20 +83,20 @@ export function MissingManager({ quantities, missingCount }: MissingManagerProps
                 </div>
 
                 {/* List */}
-                <div className="divide-y max-h-80 overflow-y-auto">
+                <div className="divide-y overflow-y-auto">
                   {missing.map(sticker => {
                     const emoji = getEmojiForSticker(sticker.code)
                     return (
                       <div key={sticker.id} className="p-3 flex items-center gap-3 hover:bg-gray-50">
-                        <span className="text-xl">{emoji}</span>
+                        <span className="text-xl shrink-0" aria-hidden>{emoji}</span>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-bold text-gray-900">{sticker.id}</span>
-                            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-mono">
+                          <div className="flex items-center gap-1.5 mb-0.5">
+                            <span className="text-sm font-bold text-gray-900 whitespace-nowrap">{sticker.id}</span>
+                            <span className="text-[10px] leading-none bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded font-mono whitespace-nowrap">
                               #{sticker.sequentialId}
                             </span>
                           </div>
-                          <p className="text-xs text-gray-600">{sticker.name}</p>
+                          <p className="text-xs text-gray-600 truncate">{sticker.name}</p>
                         </div>
                       </div>
                     )
