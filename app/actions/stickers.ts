@@ -1,3 +1,5 @@
+'use client'
+
 import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
 import {
   collection,
