@@ -1,16 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { jwtDecode } from 'jwt-decode'
+
+function decodeToken(token: string): { uid: string } | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const decoded = JSON.parse(Buffer.from(parts[1], 'base64').toString())
+    return decoded
+  } catch {
+    return null
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
     const { token } = await req.json()
-    console.log('[API] POST /stickers/list - token received')
+    console.log('[API] POST /api/stickers/list - token received:', token?.substring(0, 50))
     if (!token) {
       console.log('[API] No token provided')
       return NextResponse.json({ error: 'No token' }, { status: 401 })
     }
 
-    const decoded = jwtDecode<{ uid: string }>(token)
+    const decoded = decodeToken(token)
+    if (!decoded?.uid) {
+      console.log('[API] Failed to decode token')
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
     const userId = decoded.uid
     console.log('[API] Decoded userId:', userId)
 
