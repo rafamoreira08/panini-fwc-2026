@@ -8,8 +8,7 @@ import { Loader } from 'lucide-react'
 import { upsertSticker } from '@/app/actions/stickers'
 import { ALL_STICKERS } from '@/lib/stickers'
 import { QuantityMap } from '@/lib/types'
-import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { getFirebaseAuth } from '@/lib/firebase/client'
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
@@ -31,19 +30,21 @@ export default function DashboardPage() {
           return
         }
 
-        const db = getFirebaseFirestore()
-        console.log('[Dashboard] Firestore initialized, fetching userStickers...')
-        const q = query(collection(db, 'userStickers'), where('userId', '==', user.uid))
-        const snapshot = await getDocs(q)
-        console.log('[Dashboard] Got snapshot with', snapshot.docs.length, 'documents for userId', user.uid)
+        const token = await user.getIdToken()
+        console.log('[Dashboard] Got token, calling API...')
 
-        const result: QuantityMap = {}
-        for (const doc of snapshot.docs) {
-          const data = doc.data()
-          result[data.stickerId] = data.quantity
+        const response = await fetch('/api/stickers/list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        })
+
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`)
         }
-        console.log('[Dashboard] Loaded', Object.keys(result).length, 'stickers')
 
+        const result = await response.json()
+        console.log('[Dashboard] Loaded', Object.keys(result).length, 'stickers')
         setQuantities(result)
       } catch (err) {
         console.error('[Dashboard] Failed to load album:', err)
