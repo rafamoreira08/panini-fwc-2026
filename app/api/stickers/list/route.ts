@@ -16,17 +16,34 @@ export async function POST(req: NextRequest) {
 
     const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
     console.log('[API] ProjectId:', projectId)
-    const database = `projects/${projectId}/databases/(default)/documents`
+    const database = `projects/${projectId}/databases/(default)`
 
-    const url = `https://firestore.googleapis.com/v1/${database}/userStickers?pageSize=10000`
-    console.log('[API] Querying Firestore:', url)
+    const url = `https://firestore.googleapis.com/v1/${database}:runQuery`
+    console.log('[API] Querying Firestore via runQuery:', url)
 
-    // Consulta Firestore via REST API
+    // Query usando Firestore REST API com filtro userId
+    const queryBody = {
+      structuredQuery: {
+        from: [{ collectionId: 'userStickers' }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: 'userId' },
+            op: 'EQUAL',
+            value: { stringValue: userId },
+          },
+        },
+      },
+    }
+
+    console.log('[API] Query body:', JSON.stringify(queryBody))
+
     const response = await fetch(url, {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
+      body: JSON.stringify(queryBody),
     })
 
     console.log('[API] Firestore response status:', response.status)
@@ -37,27 +54,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Firestore error: ${error}` }, { status: response.status })
     }
 
-    const data = await response.json()
-    console.log('[API] Raw data:', JSON.stringify(data).substring(0, 500))
-    const documents = data.documents || []
-    console.log('[API] Total documents:', documents.length)
+    const text = await response.text()
+    console.log('[API] Raw response:', text.substring(0, 1000))
 
-    // Filtrar por userId
+    // Firestore runQuery returns newline-delimited JSON
+    const lines = text.trim().split('\n')
     const result: Record<string, number> = {}
-    for (const doc of documents) {
-      const fields = doc.fields
-      const docUserId = fields.userId?.stringValue
-      const stickerId = fields.stickerId?.stringValue
-      const quantity = fields.quantity?.integerValue || 0
 
-      console.log(`[API] Doc: stickerId=${stickerId}, userId=${docUserId}, match=${docUserId === userId}`)
+    for (const line of lines) {
+      if (!line) continue
+      const data = JSON.parse(line)
+      console.log('[API] Response item:', JSON.stringify(data).substring(0, 300))
 
-      if (docUserId === userId) {
+      if (data.document) {
+        const doc = data.document
+        const fields = doc.fields
+        const stickerId = fields.stickerId?.stringValue
+        const quantity = fields.quantity?.integerValue || 0
+        console.log(`[API] Found doc: stickerId=${stickerId}, quantity=${quantity}`)
         result[stickerId] = quantity
       }
     }
 
-    console.log('[API] Filtered result count:', Object.keys(result).length)
+    console.log('[API] Final result count:', Object.keys(result).length)
     return NextResponse.json(result)
   } catch (error: any) {
     console.error('[API] Error:', error.message, error.stack)
