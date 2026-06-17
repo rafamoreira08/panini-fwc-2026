@@ -19,25 +19,37 @@ export default function DashboardPage() {
   useEffect(() => {
     async function loadAlbum() {
       try {
+        console.log('[Dashboard] Starting loadAlbum')
         const auth = getFirebaseAuth()
+        console.log('[Dashboard] Auth initialized')
         await auth.authStateReady()
+        console.log('[Dashboard] Auth ready')
         const user = auth.currentUser
-        if (!user) return
+        console.log('[Dashboard] Current user:', user?.uid)
+        if (!user) {
+          console.log('[Dashboard] No user, returning')
+          return
+        }
 
         const db = getFirebaseFirestore()
+        console.log('[Dashboard] Firestore initialized, fetching userStickers...')
         const snapshot = await getDocs(collection(db, 'userStickers'))
+        console.log('[Dashboard] Got snapshot with', snapshot.docs.length, 'documents')
 
         const result: QuantityMap = {}
+        let count = 0
         for (const doc of snapshot.docs) {
           const data = doc.data()
           if (data.userId === user.uid) {
             result[data.stickerId] = data.quantity
+            count++
           }
         }
+        console.log('[Dashboard] Filtered to', count, 'stickers for user', user.uid)
 
         setQuantities(result)
       } catch (err) {
-        console.error('Failed to load album:', err)
+        console.error('[Dashboard] Failed to load album:', err)
       } finally {
         setLoading(false)
       }
