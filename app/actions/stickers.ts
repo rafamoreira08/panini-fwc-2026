@@ -8,9 +8,6 @@ import {
   where,
   deleteDoc,
   serverTimestamp,
-  startAt,
-  endAt,
-  orderBy,
 } from 'firebase/firestore'
 
 async function getUid(): Promise<string> {
@@ -20,7 +17,6 @@ async function getUid(): Promise<string> {
   return auth.currentUser.uid
 }
 
-// Stickers are global per user — groupId is not part of the key or document
 export async function upsertSticker(stickerId: string, quantity: number) {
   const uid = await getUid()
   const db = getFirebaseFirestore()
@@ -40,108 +36,87 @@ export async function upsertSticker(stickerId: string, quantity: number) {
 
 export async function getUserStickers(userId: string): Promise<Record<string, number>> {
   const db = getFirebaseFirestore()
-  const q = query(
-    collection(db, 'userStickers'),
-    orderBy('__name__'),
-    startAt(`${userId}-`),
-    endAt(`${userId}-`)
-  )
-  const snapshot = await getDocs(q)
-  const result: Record<string, number> = {}
-  for (const d of snapshot.docs) {
-    result[d.data().stickerId] = d.data().quantity
+  const q = query(collection(db, 'userStickers'), where('userId', '==', userId))
+  
+  try {
+    const snapshot = await getDocs(q)
+    console.log(`[getUserStickers] Found ${snapshot.docs.length} documents for user ${userId}`)
+    const result: Record<string, number> = {}
+    for (const d of snapshot.docs) {
+      result[d.data().stickerId] = d.data().quantity
+    }
+    return result
+  } catch (error: any) {
+    console.error('[getUserStickers] Error:', error.message)
+    return {}
   }
-  return result
 }
 
 export async function getMyDuplicatesWithNeeders(groupId: string) {
   const uid = await getUid()
   const db = getFirebaseFirestore()
+  const q = query(
+    collection(db, 'userStickers'),
+    where('userId', '==', uid)
+  )
+  const snapshot = await getDocs(q)
 
-  const myStickers = await getUserStickers(uid)
-  const duplicates = Object.entries(myStickers).filter(([_, qty]) => qty >= 2)
-
-  const result = []
-  for (const [stickerId, quantity] of duplicates) {
-    const membersQ = query(collection(db, 'groupMembers'), where('groupId', '==', groupId))
-    const membersDocs = await getDocs(membersQ)
-
-    const needers: { user_id: string; name: string }[] = []
-    for (const memberDoc of membersDocs.docs) {
-      const memberId = memberDoc.data().userId
-      if (memberId === uid) continue
-
-      const memberStickerQ = query(
-        collection(db, 'userStickers'),
-        where('userId', '==', memberId),
-        where('stickerId', '==', stickerId)
-      )
-      const stickerDocs = await getDocs(memberStickerQ)
-
-      if (stickerDocs.empty) {
-        const userDoc = await (await import('firebase/firestore')).getDoc(
-          (await import('firebase/firestore')).doc(db, 'users', memberId)
-        )
-        if (userDoc.exists()) {
-          needers.push({
-            user_id: memberId,
-            name: userDoc.data().name || 'Anônimo'
-          })
-        }
-      }
-    }
-
-    if (needers.length > 0) {
-      result.push({
-        sticker_id: stickerId,
-        quantity,
-        needers
-      })
+  const myStickers = new Map<string, number>()
+  for (const d of snapshot.docs) {
+    const qty = d.data().quantity
+    if (qty >= 2) {
+      myStickers.set(d.data().stickerId, qty - 1)
     }
   }
 
-  return result
+  if (myStickers.size === 0) return []
+
+  const groupTeams = (await getGroupMembers(groupId))
+    .filter(m => m.userId !== uid)
+    .map(m => m.teamCode)
+
+  const teamStickers = await Promise.all(
+    groupTeams.map(async teamCode => {
+      const q = query(collection(db, 'userStickers'), where('stickerId', '==', teamCode))
+      return getDocs(q)
+    })
+  )
+
+  const needers: Record<string, string[]> = {}
+  for (const snapshot of teamStickers) {
+    for (const doc of snapshot.docs) {
+      const stickerId = doc.data().stickerId
+      if (!myStickers.has(stickerId)) continue
+      if (!needers[stickerId]) needers[stickerId] = []
+      needers[stickerId].push(doc.data().userId)
+    }
+  }
+
+  return Array.from(myStickers.entries()).map(([stickerId, qty]) => ({
+    stickerId,
+    quantity: qty,
+    needers: needers[stickerId] ?? [],
+  }))
 }
 
-export async function findTradersForSticker(groupId: string, stickerId: string) {
-  const uid = await getUid()
+async function getGroupMembers(groupId: string) {
   const db = getFirebaseFirestore()
-
-  const membersQ = query(collection(db, 'groupMembers'), where('groupId', '==', groupId))
-  const membersDocs = await getDocs(membersQ)
-
-  const traders = []
-  for (const memberDoc of membersDocs.docs) {
-    const memberId = memberDoc.data().userId
-    if (memberId === uid) continue
-
-    const stickerQ = query(
-      collection(db, 'userStickers'),
-      where('userId', '==', memberId),
-      where('stickerId', '==', stickerId)
-    )
-    const stickerDocs = await getDocs(stickerQ)
-
-    if (!stickerDocs.empty) {
-      const quantity = stickerDocs.docs[0].data().quantity
-      const myStickers = await getUserStickers(uid)
-
-      const canOffer = Object.entries(myStickers)
-        .filter(([_, qty]) => qty >= 2)
-        .map(([id]) => id)
-
-      const userDoc = await (await import('firebase/firestore')).getDoc(
-        (await import('firebase/firestore')).doc(db, 'users', memberId)
-      )
-
-      traders.push({
-        user_id: memberId,
-        name: userDoc.exists() ? userDoc.data().name || 'Anônimo' : 'Anônimo',
-        quantity,
-        canOffer
-      })
+  const docSnap = await getDocs(query(collection(db, 'groups')))
+  for (const d of docSnap.docs) {
+    if (d.id === groupId) {
+      return d.data().members || []
     }
   }
+  return []
+}
 
-  return traders
+export async function signOut() {
+  try {
+    const { signOut: firebaseSignOut } = await import('firebase/auth')
+    await firebaseSignOut(getFirebaseAuth())
+    await fetch('/api/auth/logout', { method: 'POST' })
+    window.location.href = '/login'
+  } catch (error: any) {
+    return { error: error.message || 'Erro ao sair' }
+  }
 }
