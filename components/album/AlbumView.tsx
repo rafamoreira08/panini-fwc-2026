@@ -240,7 +240,7 @@ export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewPr
             </div>
             <ProgressBar have={totalHave} total={ALL_STICKERS.length} />
             <p className="text-xs text-gray-400 mt-3">
-              💡 Toque para marcar · Pressione e segure para ajustar quantidade
+              💡 Toque na figurinha para abrir os botões de + e −
             </p>
           </div>
         </>
