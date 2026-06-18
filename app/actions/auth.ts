@@ -1,6 +1,6 @@
 'use client'
 
-import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
+import { getFirebaseAuth } from '@/lib/firebase/client'
 
 export async function signIn(formDataOrEmail: FormData | string, password?: string) {
   try {
@@ -53,16 +53,17 @@ export async function signUp(formDataOrEmail: FormData | string, password?: stri
     const result = await createUserWithEmailAndPassword(getFirebaseAuth(), email, pwd)
     await updateProfile(result.user, { displayName: userName })
 
-    // Criar documento de usuário (essencial)
-    const { doc, setDoc, serverTimestamp } = await import('firebase/firestore')
-    await setDoc(doc(getFirebaseFirestore(), 'users', result.user.uid), {
-      name: userName.trim(),
-      email: email.trim(),
-      displayName: userName.trim(),
-      createdAt: serverTimestamp(),
-    }, { merge: true })
-
     const token = await result.user.getIdToken()
+
+    const userDocResponse = await fetch('/api/user-doc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, name: userName, email }),
+    })
+    if (!userDocResponse.ok) {
+      return { error: 'Erro ao criar perfil de usuário' }
+    }
+
     const response = await fetch('/api/auth/session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

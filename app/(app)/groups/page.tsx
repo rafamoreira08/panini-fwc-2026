@@ -5,20 +5,20 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { Users, Plus, BookOpen, Loader, Share2, ArrowRight } from 'lucide-react'
-import { getUserGroups, joinGroup } from '@/app/actions/groups'
-import { collection, getDocs, query, where } from 'firebase/firestore'
-import { getFirebaseFirestore, getFirebaseAuth } from '@/lib/firebase/client'
+import { joinGroup } from '@/app/actions/groups'
+import { getFirebaseAuth } from '@/lib/firebase/client'
 
-interface Group {
+interface GroupWithCount {
   id: string
   name: string
   inviteCode: string
   createdBy: string
-  joinedAt?: any
+  memberCount: number
+  joinedAt: number
 }
 
 export default function GroupsPage() {
-  const [groups, setGroups] = useState<(Group & { memberCount: number })[]>([])
+  const [groups, setGroups] = useState<GroupWithCount[]>([])
   const [loading, setLoading] = useState(true)
   const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
@@ -30,17 +30,17 @@ export default function GroupsPage() {
       await auth.authStateReady()
       const user = auth.currentUser
       if (!user) return
+      const token = await user.getIdToken()
 
-      const userGroups = (await getUserGroups()) as Group[]
-      const groupsWithCounts = await Promise.all(
-        userGroups.map(async g => {
-          const q = query(collection(getFirebaseFirestore(), 'groupMembers'), where('groupId', '==', g.id))
-          const snapshot = await getDocs(q)
-          return { ...g, memberCount: snapshot.size }
-        })
-      )
+      const response = await fetch('/api/user-groups', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token }),
+      })
 
-      setGroups(groupsWithCounts)
+      if (!response.ok) throw new Error(`API error: ${response.status}`)
+      const data: GroupWithCount[] = await response.json()
+      setGroups(data)
     } catch (err) {
       console.error('Failed to load groups:', err)
     } finally {
