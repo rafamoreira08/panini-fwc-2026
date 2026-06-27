@@ -2,9 +2,7 @@
 
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
-import { doc, getDoc, collection, getDocs, query, where } from 'firebase/firestore'
-import { getUserStickers } from '@/app/actions/stickers'
+import { getFirebaseAuth } from '@/lib/firebase/client'
 import { GroupTabs } from '@/components/groups/GroupTabs'
 import { ALL_STICKERS } from '@/lib/stickers'
 import { ProgressBar } from '@/components/album/ProgressBar'
@@ -14,7 +12,7 @@ import { Loader } from 'lucide-react'
 interface Member {
   userId: string
   name: string
-  joinedAt: any
+  joinedAt: number
 }
 
 interface Stats {
@@ -33,53 +31,66 @@ export default function MembersPage({ params }: { params: Promise<{ groupId: str
 
   useEffect(() => {
     async function load() {
-      const auth = getFirebaseAuth()
-      await auth.authStateReady()
-      const user = auth.currentUser
-      if (!user) return
-      setCurrentUid(user.uid)
-
-      const db = getFirebaseFirestore()
-
-      const groupDoc = await getDoc(doc(db, 'groups', groupId))
-      if (!groupDoc.exists()) { router.push('/dashboard'); return }
-
-      const memberCheck = await getDoc(doc(db, 'groupMembers', `${groupId}-${user.uid}`))
-      if (!memberCheck.exists()) { router.push('/dashboard'); return }
-
-      const membersQ = query(collection(db, 'groupMembers'), where('groupId', '==', groupId))
-      const membersSnapshot = await getDocs(membersQ)
-
-      const memberList = await Promise.all(
-        membersSnapshot.docs.map(async m => {
-          const userDoc = await getDoc(doc(db, 'users', m.data().userId))
-          return {
-            userId: m.data().userId,
-            name: userDoc.data()?.name || 'Usuário',
-            joinedAt: m.data().joinedAt,
-          }
-        })
-      )
-
-      // Load each member's global sticker stats
-      const memberIds = memberList.map(m => m.userId)
-      const memberQtys = await Promise.all(memberIds.map(uid => getUserStickers(uid)))
-
-      const stats: Record<string, Stats> = {}
-      memberIds.forEach((uid, i) => {
-        const qty = memberQtys[i]
-        let have = 0, dupes = 0
-        for (const q of Object.values(qty)) {
-          if (q >= 1) have++
-          if (q >= 2) dupes++
+      try {
+        const auth = getFirebaseAuth()
+        await auth.authStateReady()
+        const user = auth.currentUser
+        if (!user) {
+          router.push('/login')
+          return
         }
-        stats[uid] = { have, dupes }
-      })
+        setCurrentUid(user.uid)
+        const token = await user.getIdToken()
 
-      setGroup(groupDoc.data() as { name: string; createdBy: string })
-      setMembers(memberList)
-      setStatsByUser(stats)
-      setLoading(false)
+        // Get group info + verify membership
+        const groupRes = await fetch('/api/groups/get', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, groupId }),
+        })
+        if (!groupRes.ok) {
+          router.push('/dashboard')
+          return
+        }
+        const groupData = await groupRes.json()
+
+        // Get members + sticker quantities
+        const membersRes = await fetch('/api/groups/members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, groupId, includeStickers: true }),
+        })
+        if (!membersRes.ok) {
+          router.push('/dashboard')
+          return
+        }
+        const membersData = await membersRes.json()
+
+        const memberList: Member[] = (membersData.members ?? []).map((m: any) => ({
+          userId: m.userId,
+          name: m.name || 'Usuário',
+          joinedAt: m.joinedAt,
+        }))
+
+        const stats: Record<string, Stats> = {}
+        for (const m of membersData.members ?? []) {
+          let have = 0
+          let dupes = 0
+          for (const q of Object.values(m.qty ?? {}) as number[]) {
+            if (q >= 1) have++
+            if (q >= 2) dupes++
+          }
+          stats[m.userId] = { have, dupes }
+        }
+
+        setGroup({ name: groupData.name, createdBy: groupData.createdBy })
+        setMembers(memberList)
+        setStatsByUser(stats)
+        setLoading(false)
+      } catch (err) {
+        console.error('[MembersPage] load error:', err)
+        router.push('/dashboard')
+      }
     }
     load()
   }, [groupId, router])

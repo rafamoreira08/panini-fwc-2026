@@ -2,8 +2,7 @@
 
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
-import { collection, getDocs, query, where, doc, getDoc } from 'firebase/firestore'
+import { getFirebaseAuth } from '@/lib/firebase/client'
 import { joinGroupByCode } from '@/app/actions/groups'
 import { Button } from '@/components/ui/Button'
 import Link from 'next/link'
@@ -19,23 +18,46 @@ export default function JoinPage({ params }: { params: Promise<{ inviteCode: str
 
   useEffect(() => {
     async function load() {
-      const auth = getFirebaseAuth()
-      await auth.authStateReady()
-      const user = auth.currentUser
-      if (!user) { router.push(`/login?next=/join/${inviteCode}`); return }
+      try {
+        const auth = getFirebaseAuth()
+        await auth.authStateReady()
+        const user = auth.currentUser
+        if (!user) {
+          router.push(`/login?next=/join/${inviteCode}`)
+          return
+        }
+        const token = await user.getIdToken()
 
-      const db = getFirebaseFirestore()
-      const q = query(collection(db, 'groups'), where('inviteCode', '==', inviteCode))
-      const snapshot = await getDocs(q)
+        const res = await fetch('/api/groups/lookup-invite', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, inviteCode }),
+        })
 
-      if (snapshot.empty) { setInvalid(true); setLoading(false); return }
+        if (!res.ok) {
+          setInvalid(true)
+          setLoading(false)
+          return
+        }
 
-      const groupId = snapshot.docs[0].id
-      const memberDoc = await getDoc(doc(db, 'groupMembers', `${groupId}-${user.uid}`))
-      if (memberDoc.exists()) { router.push(`/groups/${groupId}`); return }
+        const data = await res.json()
+        if (data.invalid || !data.groupId) {
+          setInvalid(true)
+          setLoading(false)
+          return
+        }
+        if (data.isMember) {
+          router.push(`/groups/${data.groupId}`)
+          return
+        }
 
-      setGroupName(snapshot.docs[0].data().name)
-      setLoading(false)
+        setGroupName(data.name || '')
+        setLoading(false)
+      } catch (err) {
+        console.error('[JoinPage] load error:', err)
+        setInvalid(true)
+        setLoading(false)
+      }
     }
     load()
   }, [inviteCode, router])

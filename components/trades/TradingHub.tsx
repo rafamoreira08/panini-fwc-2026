@@ -1,9 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
-import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
-import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
-import { getUserStickers } from '@/app/actions/stickers'
+import { getFirebaseAuth } from '@/lib/firebase/client'
 import { ALL_STICKERS, StickerDef } from '@/lib/stickers'
 import { Badge } from '@/components/ui/Badge'
 import { ArrowLeftRight, Search, Users, Package, Loader, Flame } from 'lucide-react'
@@ -43,47 +41,34 @@ export function TradingHub({ groupId }: { groupId: string }) {
 
   useEffect(() => {
     async function load() {
-      const auth = getFirebaseAuth()
-      await auth.authStateReady()
-      const user = auth.currentUser
-      if (!user) return
+      try {
+        const auth = getFirebaseAuth()
+        await auth.authStateReady()
+        const user = auth.currentUser
+        if (!user) return
+        const token = await user.getIdToken()
 
-      const db = getFirebaseFirestore()
+        const res = await fetch('/api/groups/members', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, groupId, includeStickers: true }),
+        })
 
-      const membersQ = query(collection(db, 'groupMembers'), where('groupId', '==', groupId))
-      const membersSnap = await getDocs(membersQ)
-      const memberIds = membersSnap.docs.map(d => d.data().userId)
+        if (!res.ok) throw new Error(`API error: ${res.status}`)
+        const data = await res.json()
+        const memberList: MemberData[] = (data.members ?? []).map((m: any) => ({
+          userId: m.userId,
+          name: m.name || 'Usuário',
+          qty: m.qty ?? {},
+        }))
 
-      // Load each member's name and global sticker collection in parallel
-      const [userDocs, memberQtys] = await Promise.all([
-        Promise.all(memberIds.map(uid => getDoc(doc(db, 'users', uid)))),
-        Promise.all(memberIds.map(uid => getUserStickers(uid))),
-      ])
-
-      const memberList: MemberData[] = memberIds.map((uid, i) => {
-        const userData = userDocs[i].data()
-        let name = userData?.name || ''
-
-        // Fallback: try email
-        if (!name) {
-          name = userData?.email || ''
-        }
-
-        // Final fallback: just "Usuário" without ID
-        if (!name) {
-          name = 'Usuário'
-        }
-
-        return {
-          userId: uid,
-          name,
-          qty: memberQtys[i],
-        }
-      })
-
-      setMembers(memberList)
-      setMe(memberList.find(m => m.userId === user.uid) ?? null)
-      setLoading(false)
+        setMembers(memberList)
+        setMe(memberList.find(m => m.userId === user.uid) ?? null)
+      } catch (err) {
+        console.error('[TradingHub] load error:', err)
+      } finally {
+        setLoading(false)
+      }
     }
     load()
   }, [groupId])

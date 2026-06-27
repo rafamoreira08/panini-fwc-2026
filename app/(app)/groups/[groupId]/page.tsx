@@ -2,8 +2,7 @@
 
 import { use, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase/client'
-import { doc, getDoc } from 'firebase/firestore'
+import { getFirebaseAuth } from '@/lib/firebase/client'
 import { InviteSection } from '@/components/groups/InviteSection'
 import { GroupTabs } from '@/components/groups/GroupTabs'
 import { TradingHub } from '@/components/trades/TradingHub'
@@ -17,21 +16,34 @@ export default function GroupPage({ params }: { params: Promise<{ groupId: strin
 
   useEffect(() => {
     async function load() {
-      const auth = getFirebaseAuth()
-      await auth.authStateReady()
-      const user = auth.currentUser
-      if (!user) return
+      try {
+        const auth = getFirebaseAuth()
+        await auth.authStateReady()
+        const user = auth.currentUser
+        if (!user) {
+          router.push('/login')
+          return
+        }
+        const token = await user.getIdToken()
 
-      const db = getFirebaseFirestore()
+        const res = await fetch('/api/groups/get', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, groupId }),
+        })
 
-      const groupDoc = await getDoc(doc(db, 'groups', groupId))
-      if (!groupDoc.exists()) { router.push('/dashboard'); return }
+        if (!res.ok) {
+          router.push('/dashboard')
+          return
+        }
 
-      const memberDoc = await getDoc(doc(db, 'groupMembers', `${groupId}-${user.uid}`))
-      if (!memberDoc.exists()) { router.push('/dashboard'); return }
-
-      setGroup(groupDoc.data() as { name: string; inviteCode: string })
-      setLoading(false)
+        const data = await res.json()
+        setGroup({ name: data.name, inviteCode: data.inviteCode })
+        setLoading(false)
+      } catch (err) {
+        console.error('[GroupPage] load error:', err)
+        router.push('/dashboard')
+      }
     }
     load()
   }, [groupId, router])
