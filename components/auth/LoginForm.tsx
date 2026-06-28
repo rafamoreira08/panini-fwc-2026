@@ -1,17 +1,56 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signIn } from '@/app/actions/auth'
+import { getFirebaseAuth } from '@/lib/firebase/client'
+import { getSafeRedirectPath } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, Loader } from 'lucide-react'
 import Link from 'next/link'
 
 export function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [checkingSession, setCheckingSession] = useState(true)
+
+  // O cookie de sessão expira em ~1h e o usuário pode cair aqui mesmo com a
+  // sessão do Firebase ainda válida no navegador (ex: aba aberta há mais tempo).
+  // Nesse caso, renovamos o cookie e seguimos direto, sem pedir login de novo.
+  useEffect(() => {
+    let active = true
+    async function resumeExistingSession() {
+      try {
+        const auth = getFirebaseAuth()
+        await auth.authStateReady()
+        const user = active ? auth.currentUser : null
+        if (!user) {
+          if (active) setCheckingSession(false)
+          return
+        }
+        const token = await user.getIdToken()
+        const res = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        })
+        if (active && res.ok) {
+          router.replace(getSafeRedirectPath(searchParams.get('next')))
+          return
+        }
+      } catch {
+        // segue para o formulário normal de login
+      }
+      if (active) setCheckingSession(false)
+    }
+    resumeExistingSession()
+    return () => {
+      active = false
+    }
+  }, [router, searchParams])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -24,12 +63,20 @@ export function LoginForm() {
         setLoading(false)
       } else if (result?.success) {
         await new Promise(resolve => setTimeout(resolve, 2000))
-        router.push('/dashboard')
+        router.push(getSafeRedirectPath(searchParams.get('next')))
       }
     } catch (err: any) {
       setError(err.message || 'Erro inesperado')
       setLoading(false)
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="flex justify-center py-10">
+        <Loader className="animate-spin text-green-600" size={28} />
+      </div>
+    )
   }
 
   return (

@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { LoginForm } from '@/components/auth/LoginForm'
 import { Globe } from 'lucide-react'
 
@@ -26,7 +27,9 @@ export default function LoginPage() {
             Bem-vindo de volta
           </h2>
           <p className="text-sm text-gray-500 mb-6">Faça login na sua conta para continuar</p>
-          <LoginForm />
+          <Suspense fallback={null}>
+            <LoginForm />
+          </Suspense>
         </div>
 
         {/* Footer */}

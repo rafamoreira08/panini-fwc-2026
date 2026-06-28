@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { signUp } from '@/app/actions/auth'
+import { getSafeRedirectPath } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
 import { AlertCircle, Check } from 'lucide-react'
@@ -10,6 +11,7 @@ import Link from 'next/link'
 
 export function RegisterForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [password, setPassword] = useState('')
@@ -25,7 +27,7 @@ export function RegisterForm() {
       if (result?.error) {
         setError(result.error)
       } else if (result?.success) {
-        router.push('/dashboard')
+        router.push(getSafeRedirectPath(searchParams.get('next')))
         return
       }
     } catch (err: any) {

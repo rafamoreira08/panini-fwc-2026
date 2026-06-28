@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { RegisterForm } from '@/components/auth/RegisterForm'
 import { Sparkles } from 'lucide-react'
 
@@ -26,7 +27,9 @@ export default function RegisterPage() {
             Criar sua conta
           </h2>
           <p className="text-sm text-gray-500 mb-6">Junte-se à comunidade de colecionadores</p>
-          <RegisterForm />
+          <Suspense fallback={null}>
+            <RegisterForm />
+          </Suspense>
         </div>
 
         {/* Footer */}
