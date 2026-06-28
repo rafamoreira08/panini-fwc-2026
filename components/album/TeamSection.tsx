@@ -1,9 +1,11 @@
 'use client'
 
 import { StickerCard } from './StickerCard'
+import { StickerCardQuick } from './StickerCardQuick'
 import { ProgressBar } from './ProgressBar'
 import { StickerDef } from '@/lib/stickers'
 import { getEmojiForSticker } from '@/lib/flagEmojis'
+import { EditMethod } from '@/lib/types'
 import { Check } from 'lucide-react'
 
 interface TeamSectionProps {
@@ -16,9 +18,10 @@ interface TeamSectionProps {
   onDecrement: (id: string) => void
   /** Optional full sticker list — when set (e.g. when stickers is a filtered subset), progress is computed against it instead of the filtered list. */
   fullStickers?: StickerDef[]
+  editMethod?: EditMethod
 }
 
-export function TeamSection({ code, name, group, stickers, quantities, onIncrement, onDecrement, fullStickers }: TeamSectionProps) {
+export function TeamSection({ code, name, group, stickers, quantities, onIncrement, onDecrement, fullStickers, editMethod = 'safe' }: TeamSectionProps) {
   const progressList = fullStickers ?? stickers
   const have = progressList.filter(s => (quantities[s.id] ?? 0) >= 1).length
   const total = progressList.length
@@ -73,17 +76,29 @@ export function TeamSection({ code, name, group, stickers, quantities, onIncreme
       )}
 
       <div className="p-4 flex flex-wrap gap-2">
-        {stickers.map(s => (
-          <StickerCard
-            key={s.id}
-            stickerId={s.id}
-            number={s.number}
-            sequentialId={s.sequentialId}
-            quantity={quantities[s.id] ?? 0}
-            onIncrement={onIncrement}
-            onDecrement={onDecrement}
-          />
-        ))}
+        {stickers.map(s =>
+          editMethod === 'safe' ? (
+            <StickerCard
+              key={s.id}
+              stickerId={s.id}
+              number={s.number}
+              sequentialId={s.sequentialId}
+              quantity={quantities[s.id] ?? 0}
+              onIncrement={onIncrement}
+              onDecrement={onDecrement}
+            />
+          ) : (
+            <StickerCardQuick
+              key={s.id}
+              stickerId={s.id}
+              number={s.number}
+              sequentialId={s.sequentialId}
+              quantity={quantities[s.id] ?? 0}
+              onIncrement={onIncrement}
+              onDecrement={onDecrement}
+            />
+          )
+        )}
       </div>
     </div>
   )

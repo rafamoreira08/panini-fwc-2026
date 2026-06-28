@@ -1,14 +1,20 @@
 'use client'
 
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
+import { createPortal } from 'react-dom'
 import { Search, X } from 'lucide-react'
 import { upsertSticker } from '@/app/actions/stickers'
+import { getEditMethod, updateEditMethod } from '@/app/actions/settings'
+import { getFirebaseAuth } from '@/lib/firebase/client'
+import { saveDraft, clearDraft, mergeDraft } from '@/lib/draft'
 import { ALL_STICKERS, GROUPS, TEAMS, StickerDef } from '@/lib/stickers'
 import { getEmojiForSticker } from '@/lib/flagEmojis'
 import { TeamSection } from './TeamSection'
 import { ProgressBar } from './ProgressBar'
 import { AlbumSummary } from './AlbumSummary'
-import { QuantityMap } from '@/lib/types'
+import { EditMethodSettings } from './EditMethodSettings'
+import { SaveFloatingButton } from './SaveFloatingButton'
+import { EditMethod, QuantityMap } from '@/lib/types'
 
 type StatusFilter = 'all' | 'missing' | 'duplicates'
 
@@ -39,9 +45,80 @@ interface AlbumViewProps {
 
 export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewProps) {
   const [quantities, setQuantities] = useState<QuantityMap>(initialQuantities)
+  const [committedQuantities, setCommittedQuantities] = useState<QuantityMap>(initialQuantities)
+  const [editMethod, setEditMethod] = useState<EditMethod>('safe')
+  const [restoredCount, setRestoredCount] = useState(0)
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<StatusFilter>('all')
+  const [navActionsSlot, setNavActionsSlot] = useState<HTMLElement | null>(null)
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const uidRef = useRef<string | null>(null)
+  const committedQuantitiesRef = useRef(committedQuantities)
+
+  useEffect(() => {
+    committedQuantitiesRef.current = committedQuantities
+  }, [committedQuantities])
+
+  // Carrega a preferência de método de edição e, se for "Rápido + Salvar Manual",
+  // tenta restaurar um rascunho local que não chegou a ser salvo no servidor.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const auth = getFirebaseAuth()
+        await auth.authStateReady()
+        const uid = auth.currentUser?.uid ?? null
+        uidRef.current = uid
+
+        const method = await getEditMethod()
+        if (cancelled) return
+
+        if (method === 'quick_manual' && uid) {
+          const { merged, restoredCount: restored } = mergeDraft(uid, initialQuantities)
+          if (restored > 0) {
+            setQuantities(merged)
+            setRestoredCount(restored)
+          }
+        }
+
+        setEditMethod(method)
+      } catch (err) {
+        console.error('[AlbumView] Falha ao carregar método de edição:', err)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // O controle de método de edição é portado para dentro do Navbar (slot compartilhado),
+  // só existe enquanto este componente estiver montado (ou seja, só na página do Álbum).
+  useEffect(() => {
+    setNavActionsSlot(document.getElementById('navbar-page-actions-slot'))
+  }, [])
+
+  const pendingIds = useMemo(() => {
+    const ids = new Set<string>()
+    const allIds = new Set([...Object.keys(quantities), ...Object.keys(committedQuantities)])
+    for (const id of allIds) {
+      if ((quantities[id] ?? 0) !== (committedQuantities[id] ?? 0)) ids.add(id)
+    }
+    return ids
+  }, [quantities, committedQuantities])
+  const pendingCount = pendingIds.size
+
+  // Avisa antes de sair da página enquanto houver edições não salvas no Método Rápido + Salvar Manual.
+  useEffect(() => {
+    if (editMethod !== 'quick_manual' || pendingCount === 0) return
+    function handler(e: BeforeUnloadEvent) {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [editMethod, pendingCount])
 
   const matchesStatus = useCallback(
     (sticker: StickerDef) => {
@@ -77,15 +154,30 @@ export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewPr
     }, 400)
   }, [])
 
+  const scheduleDraftSave = useCallback((nextQuantities: QuantityMap) => {
+    const uid = uidRef.current
+    if (!uid) return
+    clearTimeout(draftTimer.current)
+    draftTimer.current = setTimeout(() => {
+      saveDraft(uid, committedQuantitiesRef.current, nextQuantities)
+    }, 300)
+  }, [])
+
   const onIncrement = useCallback(
     (id: string) => {
       setQuantities(prev => {
         const next = (prev[id] ?? 0) + 1
-        persist(id, next)
-        return { ...prev, [id]: next }
+        const nextQuantities = { ...prev, [id]: next }
+        if (editMethod === 'quick_manual') {
+          scheduleDraftSave(nextQuantities)
+        } else {
+          persist(id, next)
+          setCommittedQuantities(c => ({ ...c, [id]: next }))
+        }
+        return nextQuantities
       })
     },
-    [persist]
+    [persist, editMethod, scheduleDraftSave]
   )
 
   const onDecrement = useCallback(
@@ -94,11 +186,40 @@ export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewPr
         const current = prev[id] ?? 0
         if (current === 0) return prev
         const next = current - 1
-        persist(id, next)
-        return { ...prev, [id]: next }
+        const nextQuantities = { ...prev, [id]: next }
+        if (editMethod === 'quick_manual') {
+          scheduleDraftSave(nextQuantities)
+        } else {
+          persist(id, next)
+          setCommittedQuantities(c => ({ ...c, [id]: next }))
+        }
+        return nextQuantities
       })
     },
-    [persist]
+    [persist, editMethod, scheduleDraftSave]
+  )
+
+  const saveAllPending = useCallback(async () => {
+    const ids = Array.from(pendingIds)
+    if (ids.length === 0) return
+    await Promise.all(ids.map(id => upsertSticker(id, quantities[id] ?? 0)))
+    setCommittedQuantities(prev => {
+      const next = { ...prev }
+      for (const id of ids) next[id] = quantities[id] ?? 0
+      return next
+    })
+    if (uidRef.current) clearDraft(uidRef.current)
+  }, [pendingIds, quantities])
+
+  const handleMethodChange = useCallback(
+    async (next: EditMethod) => {
+      if (editMethod === 'quick_manual' && pendingIds.size > 0) {
+        await saveAllPending()
+      }
+      await updateEditMethod(next)
+      setEditMethod(next)
+    },
+    [editMethod, pendingIds, saveAllPending]
   )
 
   const totalHave = ALL_STICKERS.filter(s => (quantities[s.id] ?? 0) >= 1).length
@@ -161,6 +282,22 @@ export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewPr
           </div>
         </div>
       </div>
+
+      {restoredCount > 0 && (
+        <div className="flex items-center justify-between gap-2 bg-blue-50 border border-blue-200 text-blue-700 text-xs rounded-lg px-3 py-2">
+          <span>{restoredCount} alterações locais não salvas foram restauradas.</span>
+          <button
+            onClick={() => setRestoredCount(0)}
+            className="text-blue-400 hover:text-blue-600 shrink-0"
+            aria-label="Dispensar aviso"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {navActionsSlot &&
+        createPortal(<EditMethodSettings value={editMethod} onChange={handleMethodChange} />, navActionsSlot)}
 
       {/* Filters */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
@@ -267,6 +404,7 @@ export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewPr
                 quantities={quantities}
                 onIncrement={onIncrement}
                 onDecrement={onDecrement}
+                editMethod={editMethod}
               />
             )}
             {fwcHistory.length > 0 && (
@@ -279,6 +417,7 @@ export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewPr
                 quantities={quantities}
                 onIncrement={onIncrement}
                 onDecrement={onDecrement}
+                editMethod={editMethod}
               />
             )}
           </div>
@@ -319,6 +458,7 @@ export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewPr
                   quantities={quantities}
                   onIncrement={onIncrement}
                   onDecrement={onDecrement}
+                  editMethod={editMethod}
                 />
               ))}
             </div>
@@ -339,8 +479,13 @@ export function AlbumView({ initialQuantities, onQuantitiesChange }: AlbumViewPr
             quantities={quantities}
             onIncrement={onIncrement}
             onDecrement={onDecrement}
+            editMethod={editMethod}
           />
         </section>
+      )}
+
+      {editMethod === 'quick_manual' && (
+        <SaveFloatingButton pendingCount={pendingCount} onSave={saveAllPending} />
       )}
     </div>
   )

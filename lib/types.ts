@@ -28,3 +28,5 @@ export interface UserSticker {
 }
 
 export type QuantityMap = Record<string, number>
+
+export type EditMethod = 'safe' | 'quick' | 'quick_manual'
